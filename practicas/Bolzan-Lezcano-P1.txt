@@ -191,7 +191,7 @@ Nachos acepta los siguientes argumentos de línea de comandos:
 
 [-rs <random seed #>] -> Establece una seed aleatoria que será la utilizada en futuras llamadas a la función rand. De la descripción de -rs: causa que `Yield` ocurra en momentos aleatorios (pero repetibles).
 
-Ej12: (resuelto en el código threads/sys_info.cc) ### FALTA PROBAR ###
+Ej12: (resuelto en el código threads/sys_info.cc)
 En threads/sys_info.cc reemplazamos el valor de cada UNKNOWN con la variable que se desea mostrar.
 
 Ej13: 
@@ -200,8 +200,15 @@ Synch list: Utilizando la clase List, agrega mecanismos para bloquear acciones a
     -> Remover: Los threads que remueven un item esperan a que haya un elemento en la lista
     -> Solo un thread accede a la lista en cada momento
 
-Ej14: (resuelto en el código threads/thread_test_simple.cc) ### FALTA PROBAR ###
+Ej14: (resuelto en el código threads/thread_test_simple.cc)
 
-Ej15: (resuelto en el código threads/thread_test_simple.cc) ### FALTA PROBAR ###
+Ej15: (resuelto en el código threads/thread_test_simple.cc y en threads/Makefile se debe descomentar la bandera -DSEMAPHORE_TEST)
 
+Ej16: (resuelto en el código threads/thread_test_simple.cc)
 
+Ej17:
+
+Ej18: (resuelto en el código threads/thread_test_garden_sem.cc
+                            threads/thread_test_garden_sem.hh
+                            Makefile.common
+                            threads/thread_test.cc)

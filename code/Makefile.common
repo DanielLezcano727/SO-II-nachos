@@ -68,6 +68,7 @@ THREAD_SRC = threads/main.cc                  \
              threads/thread.cc                \
              threads/thread_test.cc           \
              threads/thread_test_garden.cc    \
+             threads/thread_test_garden_sem.cc \
              threads/thread_test_prod_cons.cc \
              threads/thread_test_simple.cc    \
              lib/assert.cc                    \

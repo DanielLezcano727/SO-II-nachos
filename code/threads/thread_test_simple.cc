@@ -23,9 +23,9 @@ SimpleThread(void *name_)
 {
     // Reinterpret arg `name` as a string.
     char *name = (char *) name_;
-
     #ifdef SEMAPHORE_TEST
         sem->P();
+        DEBUG('s', "Thread %s executes sem->P()\n", name);
     #endif
     // If the lines dealing with interrupts are commented, the code will
     // behave incorrectly, because printf execution may cause race
@@ -37,6 +37,7 @@ SimpleThread(void *name_)
 
     #ifdef SEMAPHORE_TEST
         sem->V();
+        DEBUG('s', "Thread %s executes sem->V()\n", name);
     #endif
 
     printf("!!! Thread `%s` has finished\n", name);

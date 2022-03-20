@@ -1,0 +1,207 @@
+Respuestas plancha 1
+Alumnos: Bolzán Francisco, Lezcano Daniel
+
+Ej1: 
+
+Ej2:
+Memoria simulada en NACHOS:
+    32*128 bytes (respuesta hallada en machine/mmu.hh)
+
+Ej3:
+Variables que almacenan la cantidad de memoria (machine/mmu.hh):
+ - PAGE_SIZE
+ - NUM_PHYS_PAGES
+
+Para modificar la cantidad de memoria podrias modificar la variable NUM_PHYS_PAGES
+
+Ej4: 
+Un disco es de tamaño:
+    32*32*128 (respuesta hallada en machine/disk.hh)
+Donde cada disco tiene 32 tracks, cada track tiene 32 sectores, y cada sector tiene 128 bytes.
+
+Ej5:
+Nachos simula 63 operaciones de MIPS, todas poseen el mismo nombre que en el manual de MIPS salvo por OP_UNIMP y OP_RES (respuesta hallada en machine/encoding.hh)
+
+Ej6:
+
+
+Ej7:
+main:
+ - Initialize                   (threads/system.cc):
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - strcmp                     (string.h)
+   - ParseDebugOpts             (threads/system.cc)
+   - RandomInit                 (machine/system_dep.cc)
+   - atof                       (stdlib.h)
+   - atoi                       (stdlib.h)
+   - SetFlags                   (lib/debug.cc)
+   - SetOpts                    (lib/debug.cc)
+   - Timer                      (machine/timer.cc)
+   - CallOnUserAbort            (machine/system_dep.cc)
+   - Machine                    (machine/machine.cc)
+   - SetExceptionHandlers       (userprog/exception.cc)
+   - SynchDisk                  (filesys/synch_disk.cc)
+   - FileSystem                 (filesys/file_system.cc)
+   - PostOffice                 (network/post.cc)
+ - DEBUG                        (Macro)
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - IsEnabled                  (lib/debug.cc)
+   - fprintf                    (stdlib.h)
+   - va_start                   (stdarg.h)
+   - vfprintf                   (stdarg.h)
+   - va_end                     (stdarg.h)
+   - fflush                     (stdio.h)
+   - Delay                      (machine/system_dep.cc)
+   - getchar                    (stdio.h)
+ - strcmp                       (string.h)
+ - SysInfo
+   - printf                     (stdlib.h)
+ - PrintVersion                 (threads/main.cc)
+   - printf                     (stdlib.h)
+ - ThreadTest                   (threads/thread_test.cc)
+   - DEBUG                      (lib/debug.cc)
+   - Choose                     (threads/thread_test.cc)
+   - Run                        (threads/thread_test.cc)
+ - interrupt->Halt              (machine/interrupt.cc)
+   - printf                     (stdlib.h)
+   - Print                      (machine/statistics.cc)
+   - Cleanup                    (threads/system.cc)
+ - ASSERT                       (lib/assert.hh y lib/assert.cc)
+   - fprintf                    (stdlib.h)
+   - fflush                     (stdio.h)
+   - abort                      (stdlib.h)
+ - StartProcess                 (userprog/prod_test.cc)
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - Open                       (filesys/file_system.cc)
+   - printf                     (stdlib.h)
+   - AddresSpace                (userprog/address_space.cc)
+   - InitRegisters              (userprog/address_space.cc)
+   - RestoreState               (userprog/address_space.cc)
+   - Run                        (machine/mips_sim.cc)
+ - ConsoleTest                  (userprog/prog_test.cc)
+   - Console                    (machine/console.cc)
+   - Semaphore                  (threads/semaphore.cc)
+   - P                          (threads/semaphore.cc)
+   - GetChar                    (machine/console.cc)
+   - PutChar                    (machine/console.cc)
+ - Copy                         (filesys/fs_test.cc)
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - fopen                      (stdio.h)
+   - printf                     (stdlib.h)
+   - fseek                      (stdio.h)                     
+   - ftell                      (stdio.h)
+   - DEBUG                      (lib/debug.cc)
+   - Create                     (filesys/file_system.cc)
+   - Open                       (filesys/file_system.cc)
+   - fclose                     (stdlib.h)
+ - Print                        (main.cc)
+   - Open                       (filesys/file_system.cc)
+   - fprintf                    (stdlib.h)
+   - Read                       (filesys/file_system.cc)
+   - printf                     (stdlib.h)
+ - printf                       (stdlib.h)
+ - fileSystem->Remove           (filesys/file_system.cc)
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - Directory                  (filesys/directory.cc)
+   - FetchFrom                  (filesys/directory.cc)
+   - Find                       (filesys/directory.cc)
+   - FileHeader                 (filesys/file_header.cc)
+   - Bitmap                     (lib/bitmap.cc)
+   - Deallocate                 (filesys/file_header.cc)
+   - Clear                      (lib/bitmap.cc)
+   - Remove                     (filesys/directory.cc)
+   - WriteBack                  (lib/bitmap.cc)
+ - fileSystem->List             (filesys/file_system.cc)
+   - Directory                  (filesys/directory.cc)
+   - FetchFrom                  (filesys/directory.cc)
+   - List                       (filesys/file_system.cc)
+ - fileSystem->Print            (filesys/file_system.cc)
+   - FileHeader                 (filesys/file_header.cc)
+   - Bitmap                     (lib/bitmap.cc)
+   - Directory                  (filesys/directory.cc)
+   - FetchFrom                  (filesys/directory.cc)
+   - Print                      (lib/bitmap.cc)
+ - fileSystem->Check            (filesys/file_system.cc)
+   - DEBUG                      (lib/debug.cc)
+   - Bitmap                     (lib/bitmap.cc)
+   - Mark                       (lib/bitmap.cc)
+   - FileHeader                 (filesys/file_header.cc)
+   - GetRaw                     (filesys/file_header.cc)
+   - FetchFrom                  (filesys/file_header.cc)
+   - CheckForError              (filesys/file_system.cc)
+   - CheckFileHeader            (filesys/file_system.cc)
+   - Directory                  (filesys/directory.cc)
+   - CheckDirectory             (filesys/file_system.cc)
+   - CheckBitmaps               (filesys/file_system.cc)
+ - PerformanceTest              (filesys/fs_test.cc)
+   - printf                     (stdlib.h)
+   - Print                      (machine/statistics.cc)
+   - FileWrite                  (filesys/fs_test.cc)
+   - FileRead                   (filesys/fs_test.cc)
+   - Remove                     (filesys/file_system.cc)
+   - printf                     (stdlib.h)
+ - SystemDep::Delay             (machine/system_dep.cc)
+   - sleep                      (unistd.h)
+ - Finish                       (threads/thread.cc)
+   - SetLevel                   (machine/interrupt.cc)
+   - ASSERT                     (lib/assert.hh y lib/assert.cc)
+   - DEBUG                      (lib/debug.cc)
+   - Sleep                      (threads/thread.cc)
+ 
+
+Ej8:
+ASSERT: Dada una condición , si es falsa muestra un mensaje que indica la presencia de un error, la expresión que falló y su ubicación. Si la condición se cumple el programa sigue su ejecución normalmente.
+DEBUG: Activa las banderas y mensajes de depuración. Imprime errores y advertencias si estos existen, de no ser así, la ejecución sigue normalmente.
+
+Ej9:
+Banderas de depuración: (respuesta hallada en lib/debug_opts.hh)
+ - location: imprimir la localización (nombre de archivo y línea) junto con el mensaje de debug
+
+ - function: imprimir el nombre de la función llamante junto con el mensaje de debug
+
+ - sleep: dormir luego de cada mensaje de debug
+ 
+ - interactive: esperar input del usaurio luego de cada mensaje de debug
+
+Ej10:
+Las constantes USER_PROGRAM, FILESYS_NEEDED, FILESYS_STUB y NETWORK están declaradas en los Makefile de múltiples subdirectorios de la carpeta /code
+
+Ej11: (respuesta hallada en threads/main.cc)
+Nachos acepta los siguientes argumentos de línea de comandos:
+    [-d <debugflags>]
+    [-do <debugopts>] 
+    [-p]
+    [-rs <random seed #>]
+    [-z]
+    [-tt]
+    [-s]
+    [-x <nachos file>]
+    [-tc <consoleIn> <consoleOut>]
+    [-f]
+    [-cp <unix file> <nachos file>]
+    [-pr <nachos file>]
+    [-rm <nachos file>]
+    [-ls]
+    [-D]
+    [-c]
+    [-tf]
+    [-n <network reliability>]
+    [-id <machine id>]
+    [-tn <other machine id>]
+
+[-rs <random seed #>] -> Establece una seed aleatoria que será la utilizada en futuras llamadas a la función rand. De la descripción de -rs: causa que `Yield` ocurra en momentos aleatorios (pero repetibles).
+
+Ej12: (resuelto en el código threads/sys_info.cc) ### FALTA PROBAR ###
+En threads/sys_info.cc reemplazamos el valor de cada UNKNOWN con la variable que se desea mostrar.
+
+Ej13: 
+List: implementación de una lista enlazada
+Synch list: Utilizando la clase List, agrega mecanismos para bloquear acciones accedidas por múltiples threads
+    -> Remover: Los threads que remueven un item esperan a que haya un elemento en la lista
+    -> Solo un thread accede a la lista en cada momento
+
+Ej14: (resuelto en el código threads/thread_test_simple.cc) ### FALTA PROBAR ###
+
+Ej15: (resuelto en el código threads/thread_test_simple.cc) ### FALTA PROBAR ###
+
+

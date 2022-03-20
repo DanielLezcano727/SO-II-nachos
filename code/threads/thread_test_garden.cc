@@ -7,6 +7,7 @@
 
 #include "thread_test_garden.hh"
 #include "system.hh"
+#include "semaphore.hh"
 
 #include <stdio.h>
 
@@ -15,6 +16,7 @@ static const unsigned NUM_TURNSTILES = 2;
 static const unsigned ITERATIONS_PER_TURNSTILE = 50;
 static bool done[NUM_TURNSTILES];
 static int count;
+static Semaphore *semaphore = new Semaphore("Garden", 1);
 
 static void
 Turnstile(void *n_)
@@ -22,9 +24,11 @@ Turnstile(void *n_)
     unsigned *n = (unsigned *) n_;
 
     for (unsigned i = 0; i < ITERATIONS_PER_TURNSTILE; i++) {
+        semaphore->P();
         int temp = count;
         currentThread->Yield();
         count = temp + 1;
+        semaphore->V();
     }
     printf("Turnstile %u finished. Count is now %u.\n", *n, count);
     done[*n] = true;

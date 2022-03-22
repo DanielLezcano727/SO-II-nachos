@@ -2,6 +2,10 @@ Respuestas plancha 1
 Alumnos: Bolzán Francisco, Lezcano Daniel
 
 Ej1: 
+Nachos es un SO creado con el propósito de enseñar sobre sistemas operativos, por
+lo que corre sobre una CPU emulada para facilitar el proceso de debugging y no 
+comprometer el hardware real del usuario en posibles cambios que se realicen al 
+código de Nachos.
 
 Ej2:
 Memoria simulada en NACHOS:
@@ -23,7 +27,25 @@ Ej5:
 Nachos simula 63 operaciones de MIPS, todas poseen el mismo nombre que en el manual de MIPS salvo por OP_UNIMP y OP_RES (respuesta hallada en machine/encoding.hh)
 
 Ej6:
+Los archivos que tienen definida la funcion main son:
+ - bin/coff2flat.c 
+ - bin/coff2noff.c
+ - bin/disasm.c
+ - bin/main.c
+ - bin/out.c
+ - bin/readnoff.c
+ - bin/fuse/nachosfuse.c
+ - threads/main.cc
+ - userland/echo.c
+ - userland/filetest.c
+ - userland/halt.c
+ - userland/matmult.c
+ - userland/shell.c
+ - userland/sort.c
+ - userland/tiny_shell.c
+ - userland/touch.c
 
+La función main del ejecutable nachos del directorio userprog está definida en threads/main.cc
 
 Ej7:
 main:
@@ -150,8 +172,11 @@ main:
  
 
 Ej8:
-ASSERT: Dada una condición , si es falsa muestra un mensaje que indica la presencia de un error, la expresión que falló y su ubicación. Si la condición se cumple el programa sigue su ejecución normalmente.
-DEBUG: Activa las banderas y mensajes de depuración. Imprime errores y advertencias si estos existen, de no ser así, la ejecución sigue normalmente.
+ASSERT: Dada una condición , si es falsa muestra un mensaje que indica la presencia de un error, 
+la expresión que falló y su ubicación. Si la condición se cumple el programa sigue su ejecución 
+normalmente.
+DEBUG: Activa las banderas y mensajes de depuración. Imprime errores y advertencias si estos 
+existen, de no ser así, la ejecución sigue normalmente.
 
 Ej9:
 Banderas de depuración: (respuesta hallada en lib/debug_opts.hh)
@@ -164,7 +189,8 @@ Banderas de depuración: (respuesta hallada en lib/debug_opts.hh)
  - interactive: esperar input del usaurio luego de cada mensaje de debug
 
 Ej10:
-Las constantes USER_PROGRAM, FILESYS_NEEDED, FILESYS_STUB y NETWORK están declaradas en los Makefile de múltiples subdirectorios de la carpeta /code
+Las constantes USER_PROGRAM, FILESYS_NEEDED, FILESYS_STUB y NETWORK están declaradas en los 
+Makefile de múltiples subdirectorios de la carpeta /code
 
 Ej11: (respuesta hallada en threads/main.cc)
 Nachos acepta los siguientes argumentos de línea de comandos:
@@ -189,24 +215,29 @@ Nachos acepta los siguientes argumentos de línea de comandos:
     [-id <machine id>]
     [-tn <other machine id>]
 
-[-rs <random seed #>] -> Establece una seed aleatoria que será la utilizada en futuras llamadas a la función rand. De la descripción de -rs: causa que `Yield` ocurra en momentos aleatorios (pero repetibles).
+[-rs <random seed #>] -> Establece una seed aleatoria que será la utilizada en futuras llamadas 
+a la función rand. De la descripción de -rs: causa que `Yield` ocurra en momentos aleatorios 
+(pero repetibles).
 
 Ej12: (resuelto en el código threads/sys_info.cc)
-En threads/sys_info.cc reemplazamos el valor de cada UNKNOWN con la variable que se desea mostrar.
+En threads/sys_info.cc reemplazamos el valor de cada UNKNOWN con la variable que se desea 
+mostrar.
 
 Ej13: 
 List: implementación de una lista enlazada
-Synch list: Utilizando la clase List, agrega mecanismos para bloquear acciones accedidas por múltiples threads
+Synch list: Utilizando la clase List, agrega mecanismos para bloquear acciones accedidas por 
+múltiples threads
     -> Remover: Los threads que remueven un item esperan a que haya un elemento en la lista
     -> Solo un thread accede a la lista en cada momento
 
 Ej14: (resuelto en el código threads/thread_test_simple.cc)
 
-Ej15: (resuelto en el código threads/thread_test_simple.cc y en threads/Makefile se debe descomentar la bandera -DSEMAPHORE_TEST)
+Ej15: (resuelto en el código threads/thread_test_simple.cc y en threads/Makefile se debe 
+descomentar la bandera -DSEMAPHORE_TEST)
 
 Ej16: (resuelto en el código threads/thread_test_simple.cc)
 
-Ej17:
+Ej17: (resuelto en el código threads/thread_test_garden.cc)
 
 Ej18: (resuelto en el código threads/thread_test_garden_sem.cc
                             threads/thread_test_garden_sem.hh

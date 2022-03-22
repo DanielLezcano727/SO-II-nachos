@@ -77,4 +77,8 @@ ThreadTestSimple()
     newThread3->Fork(SimpleThread, (void *) name3);
     newThread2->Fork(SimpleThread, (void *) name2);
     SimpleThread((void *) "1st");
+
+    #ifdef SEMAPHORE_TEST
+        delete sem
+    #endif
 }

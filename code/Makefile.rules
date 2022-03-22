@@ -5,6 +5,7 @@ all: $(PROGRAM)
 clean:
 	@echo ":: Cleaning $$(tput bold)$(notdir $(CURDIR))$$(tput sgr0)"
 	@$(RM) $(PROGRAM) $(OBJ_FILES)
+	@$(RM) Makefile.depends
 
 depend: $(SRC_FILES) $(HDR_FILES)
 	@echo ':: Generating dependencies'

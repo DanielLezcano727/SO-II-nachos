@@ -7,10 +7,12 @@
 
 #include "thread_test_simple.hh"
 #include "system.hh"
+#include "semaphore.hh"
 
 #include <stdio.h>
 #include <string.h>
 
+static Semaphore *sem;
 
 /// Loop 10 times, yielding the CPU to another ready thread each iteration.
 ///
@@ -21,7 +23,10 @@ SimpleThread(void *name_)
 {
     // Reinterpret arg `name` as a string.
     char *name = (char *) name_;
-
+    #ifdef SEMAPHORE_TEST
+        sem->P();
+        DEBUG('s', "Thread %s executes sem->P()\n", name);
+    #endif
     // If the lines dealing with interrupts are commented, the code will
     // behave incorrectly, because printf execution may cause race
     // conditions.
@@ -29,6 +34,12 @@ SimpleThread(void *name_)
         printf("*** Thread `%s` is running: iteration %u\n", name, num);
         currentThread->Yield();
     }
+
+    #ifdef SEMAPHORE_TEST
+        sem->V();
+        DEBUG('s', "Thread %s executes sem->V()\n", name);
+    #endif
+
     printf("!!! Thread `%s` has finished\n", name);
 }
 
@@ -39,10 +50,35 @@ SimpleThread(void *name_)
 void
 ThreadTestSimple()
 {
-    char *name = new char [64];
-    strncpy(name, "2nd", 64);
-    Thread *newThread = new Thread(name);
-    newThread->Fork(SimpleThread, (void *) name);
+    char *name5 = new char [64];
+    strncpy(name5, "5th", 64);
+    Thread *newThread5 = new Thread(name5);
 
+    char *name4 = new char [64];
+    strncpy(name4, "4th", 64);
+    Thread *newThread4 = new Thread(name4);
+    
+    char *name3 = new char [64];
+    strncpy(name3, "3rd", 64);
+    Thread *newThread3 = new Thread(name3);
+
+    char *name2 = new char [64];
+    strncpy(name2, "2nd", 64);
+    Thread *newThread2 = new Thread(name2);
+
+    #ifdef SEMAPHORE_TEST
+        sem = new Semaphore("Sem", 3);
+    #else
+        sem = NULL;
+    #endif
+
+    newThread5->Fork(SimpleThread, (void *) name5);
+    newThread4->Fork(SimpleThread, (void *) name4);
+    newThread3->Fork(SimpleThread, (void *) name3);
+    newThread2->Fork(SimpleThread, (void *) name2);
     SimpleThread((void *) "1st");
+
+    #ifdef SEMAPHORE_TEST
+        delete sem
+    #endif
 }

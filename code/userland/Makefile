@@ -12,7 +12,7 @@
 # If you are cross-compiling, you need to point to the right executables and
 # change the flags to ld and the build procedure for as:
 #GCC_PREFIX = /home/mariano/usr/bin/mips-suse-linux-
-GCC_PREFIX = cross-mipsel-linux-gnu-
+GCC_PREFIX = mipsel-linux-gnu-
 LDFLAGS    = -T arrangement.ld -N -s
 ASFLAGS    = -mips1
 CPPFLAGS   = $(INCLUDE_DIRS)

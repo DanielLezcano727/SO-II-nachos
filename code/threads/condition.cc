@@ -27,12 +27,12 @@ Condition::Condition(const char *debugName, Lock *conditionLock)
 {
     name = debugName;
     lock = conditionLock;
-    // lista = new List<>;
+    lista = new List<Semaphore *>;
 }
 
 Condition::~Condition()
 {
-    // TODO
+    delete lista;
 }
 
 const char *
@@ -44,32 +44,36 @@ Condition::GetName() const
 void
 Condition::Wait()
 {
-    // ASSERT(lock->isHeldByCurrentThread());
-    // Semaphore *s = new Semaphore("s", 0);
+    ASSERT(lock->IsHeldByCurrentThread());
+    Semaphore *s = new Semaphore("s", 0);
     
-    // lista->Append(s);
-    // lock->Release();
-    // s->P();
-    // lock->Acquire();
+    lista->Append(s);
+    lock->Release();
+    s->P();
+    lock->Acquire();
     
-    // delete s;
+    delete s;
 }
 
 void
 Condition::Signal()
 {
-    // ASSERT(lock->isHeldByCurrentThread());
-    // if(!lista->isEmpty()){
-    //     Semaphore *s = lista->Pop();
+    ASSERT(lock->IsHeldByCurrentThread());
+    if(!lista->IsEmpty()){
+        Semaphore *s = lista->Pop();
 
-    //     if(s != NULL) {
-    //         s->V();
-    //     }
-    // }
+        if(s != NULL) {
+            s->V();
+        }
+    }
 }
 
 void
 Condition::Broadcast()
 {
-    // TODO
+    ASSERT(lock->IsHeldByCurrentThread());
+
+    while(!lista->IsEmpty()){
+        Signal();
+    }
 }

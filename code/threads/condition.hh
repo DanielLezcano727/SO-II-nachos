@@ -77,6 +77,8 @@ private:
     const char *name;
 
     // Other needed fields are to be added here.
+    List<Semaphore *> lista;
+    Lock *lock;
 };
 
 

@@ -16,7 +16,7 @@
 
 
 #include "condition.hh"
-
+#include "lock.hh"
 
 /// Dummy functions -- so we can compile our later assignments.
 ///
@@ -25,7 +25,9 @@
 
 Condition::Condition(const char *debugName, Lock *conditionLock)
 {
-    // TODO
+    name = debugName;
+    lock = conditionLock;
+    // lista = new List<>;
 }
 
 Condition::~Condition()
@@ -42,13 +44,28 @@ Condition::GetName() const
 void
 Condition::Wait()
 {
-    // TODO
+    // ASSERT(lock->isHeldByCurrentThread());
+    // Semaphore *s = new Semaphore("s", 0);
+    
+    // lista->Append(s);
+    // lock->Release();
+    // s->P();
+    // lock->Acquire();
+    
+    // delete s;
 }
 
 void
 Condition::Signal()
 {
-    // TODO
+    // ASSERT(lock->isHeldByCurrentThread());
+    // if(!lista->isEmpty()){
+    //     Semaphore *s = lista->Pop();
+
+    //     if(s != NULL) {
+    //         s->V();
+    //     }
+    // }
 }
 
 void

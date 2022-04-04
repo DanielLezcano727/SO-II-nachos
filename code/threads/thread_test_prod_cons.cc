@@ -6,12 +6,63 @@
 
 
 #include "thread_test_prod_cons.hh"
+#include "system.hh"
+#include "condition.hh"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#define SHELF_SIZE 256
+#define TO_PRODUCE 10
+#define MAX_PRODUCE 3
+#define MAX_CONS 2
+List<int> *shelf;
+Lock *lock;
+Condition *cond;
+
+void
+Producer(int ammount)
+{
+    int step;
+
+    for(int i=0; i<ammount; i++) {
+        step = rand() % MAX_PRODUCE;
+        for(int j=0; j<step; j++) {
+            shelf->Append(j);
+        }
+        cond->Signal();
+        cond->Wait();
+    }
+}
+
+void
+Consumer(void *name)
+{
+    int step;
+
+    while(true) {
+        cond->Wait();
+        step = rand() % MAX_CONS;
+        for(int j=0; j<step; j++) {
+            shelf->Pop();
+        }
+        cond->Signal();
+    }
+}
 
 void
 ThreadTestProdCons()
 {
-    printf("Test unimplemented!\n");
+    shelf = new List<int>;
+    lock = new Lock("cond_lock");
+    cond = new Condition("cond", lock);
+
+    char *name = new char [64];
+    strncpy(name, "consumer", 64);
+    Thread *newThread = new Thread(name);
+    newThread->Fork(Consumer, (void *)name);
+
+    lock->Acquire();
+    Producer(TO_PRODUCE);
 }

@@ -44,13 +44,13 @@ Condition::GetName() const
 void
 Condition::Wait()
 {
-    ASSERT(lock->IsHeldByCurrentThread());
+    ASSERT(!lock->IsHeldByCurrentThread());
     Semaphore *s = new Semaphore("s", 0);
     
+    lock->Acquire();
     lista->Append(s);
     lock->Release();
     s->P();
-    lock->Acquire();
     
     delete s;
 }
@@ -58,22 +58,30 @@ Condition::Wait()
 void
 Condition::Signal()
 {
-    ASSERT(lock->IsHeldByCurrentThread());
-    if(!lista->IsEmpty()){
-        Semaphore *s = lista->Pop();
+    Semaphore *s = NULL;
+    lock->Acquire();
 
-        if(s != NULL) {
-            s->V();
-        }
+    if (!lista->IsEmpty()){
+        s = lista->Pop();
+    }
+
+    lock->Release();
+
+    if(s != NULL) {
+        s->V();
     }
 }
 
 void
 Condition::Broadcast()
 {
-    ASSERT(lock->IsHeldByCurrentThread());
-
+    Semaphore *s = NULL;
+    lock->Acquire();
     while(!lista->IsEmpty()){
-        Signal();
+        s = lista->Pop();
+        if(s != NULL) {
+            s->V();
+        }
     }
+    lock->Release();
 }

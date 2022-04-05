@@ -42,15 +42,15 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
-    ASSERT(current == NULL);
     sem->P();
+    ASSERT(current == NULL);
     current = currentThread;
 }
 
 void
 Lock::Release()
 {
-    ASSERT(!IsHeldByCurrentThread());
+    ASSERT(IsHeldByCurrentThread());
     current = NULL;
     sem->V();
 }

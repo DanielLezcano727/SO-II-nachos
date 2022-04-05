@@ -25,6 +25,7 @@ Lock::Lock(const char *debugName)
 {
     name = debugName;
     sem = new Semaphore("Sem_lock", 1);
+    current = NULL;
 }
 
 Lock::~Lock()
@@ -41,13 +42,16 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
+    ASSERT(current == NULL);
     sem->P();
+    current = currentThread;
 }
 
 void
 Lock::Release()
 {
     ASSERT(!IsHeldByCurrentThread());
+    current = NULL;
     sem->V();
 }
 

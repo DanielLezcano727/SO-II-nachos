@@ -11,25 +11,38 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
+#include <string>
 
-#define END_AFTER 30
-#define SHELF_SIZE 10
-int shelf;
-Lock *lock;
-Condition *cond;
+#define PRODUCERS 3
+#define CONSUMERS 6
+
+#define END_AFTER 100 // Cantidad de iteraciones de cada consumidor
+#define BUFFER_SIZE 10 // Cantidad maxima del buffer
+int buffer;
+
+// Lock *lock; // Utilizado para proteger la variable buffer (Region critica)
+Condition *cond_prod; // Utilizado para que los productores no produzcan mas de lo que se puede guardar en el buffer
+Condition *cond_cons; // Utilizado para que los consumidores no consuman mas de lo que este almacenado en el buffer
 
 void
-Producer()
+Producer(void *name)
 {
+    DEBUG('t', "Iniciando Thread %s\n", name);
     for(int i=0; i<END_AFTER; i++) {
-        if(shelf<SHELF_SIZE) {
-            lock->Acquire();
-            shelf++;
-            lock->Release();
-            cond->Signal();
-        }else {
-            cond->Wait();
+        if(buffer<BUFFER_SIZE) {
+            DEBUG('t', "Thread %s produce\n", name);
+            // lock->Acquire();
+            buffer++;
+            // lock->Release();
+            currentThread->Yield();
+            DEBUG('t', "Thread %s despierta consumidores\n", name);
+            cond_cons->Signal();
+        } else {
+            DEBUG('t', "Buffer lleno. Thread %s a dormir\n", name);
+            currentThread->Yield();
+            cond_prod->Wait();
+            DEBUG('t', "Buffer liberado. Thread %s sigue\n", name);
         }
     }
 }
@@ -38,26 +51,54 @@ void
 Consumer(void *name)
 {
     while(true) {
-        if(shelf>0) {
-            lock->Acquire();
-            shelf--;
-            lock->Release();
-            cond->Signal();
+        if(buffer>0) {
+            DEBUG('t', "Thread %s consume\n", name);
+            // lock->Acquire();
+            buffer--;
+            // lock->Release();
+            currentThread->Yield();
+            DEBUG('t', "Thread %s despierta productores\n", name);
+            cond_prod->Signal();
         }else {
-            cond->Wait();
+            DEBUG('t', "Buffer vacio. Thread %s a dormir\n", name);
+            cond_cons->Wait();
+            DEBUG('t', "Buffer tiene para consumir. Thread %s sigue\n", name);
         }
+        currentThread->Yield();
     }
 }
 
 void
 ThreadTestProdCons()
 {
-    lock = new Lock("cond_lock");
-    cond = new Condition("cond", lock);
+    // lock = new Lock("Lock buffer");
+    cond_cons = new Condition("cond", new Lock("cond_lock"));
 
-    char *name = new char [64];
-    strncpy(name, "consumer", 64);
-    Thread *newThread = new Thread(name);
-    newThread->Fork(Consumer, (void *)name);
-    Producer();
+    char *nameConsumers[10];
+    Thread *consumers[CONSUMERS];
+
+    std::string nameCons = "consumer ";
+    std::string nameProd = "producer ";
+
+    for (int i = 0; i<CONSUMERS; i++) {
+        nameConsumers[i] = new char [64];
+        
+        strncpy(nameConsumers[i], (nameCons + std::to_string(i)).c_str(), 64);
+        
+        consumers[i] = new Thread(nameConsumers[i]);
+        consumers[i]->Fork(Consumer, (void *)nameConsumers[i]);
+    }
+
+    char *nameProducers[10];
+    Thread *producers[PRODUCERS - 1];
+
+    for (int i = 0; i<PRODUCERS - 1; i++) {
+        nameProducers[i] = new char [64];
+        strncpy(nameProducers[i], (nameProd + std::to_string(i)).c_str(), 64);
+        
+        producers[i] = new Thread(nameProducers[i]);
+        
+        producers[i]->Fork(Consumer, (void *)nameProducers[i]);
+    }
+    Producer((void *)"Principal Producer");
 }

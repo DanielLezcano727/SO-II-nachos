@@ -51,7 +51,6 @@ Condition::Wait()
     lista->Append(s);
     lock->Release();
     s->P();
-    
     delete s;
 }
 

@@ -14,13 +14,14 @@
 #include <cstring>
 #include <string>
 
-#define PRODUCERS 3
+#define PRODUCERS 6
 #define CONSUMERS 6
 
-#define END_AFTER 100 // Cantidad de iteraciones de cada consumidor
+#define END_AFTER 100 // Cantidad de iteraciones de cada productor
 #define BUFFER_SIZE 10 // Cantidad maxima del buffer
 int buffer;
 
+// Descomentar los locks cuando haya más de un procesador
 // Lock *lock; // Utilizado para proteger la variable buffer (Region critica)
 Condition *cond_prod; // Utilizado para que los productores no produzcan mas de lo que se puede guardar en el buffer
 Condition *cond_cons; // Utilizado para que los consumidores no consuman mas de lo que este almacenado en el buffer
@@ -35,9 +36,9 @@ Producer(void *name)
             // lock->Acquire();
             buffer++;
             // lock->Release();
-            currentThread->Yield();
             DEBUG('t', "Thread %s despierta consumidores\n", name);
             cond_cons->Signal();
+            currentThread->Yield();
         } else {
             DEBUG('t', "Buffer lleno. Thread %s a dormir\n", name);
             currentThread->Yield();
@@ -56,25 +57,26 @@ Consumer(void *name)
             // lock->Acquire();
             buffer--;
             // lock->Release();
-            currentThread->Yield();
             DEBUG('t', "Thread %s despierta productores\n", name);
             cond_prod->Signal();
+            currentThread->Yield();
         }else {
             DEBUG('t', "Buffer vacio. Thread %s a dormir\n", name);
+            currentThread->Yield();
             cond_cons->Wait();
             DEBUG('t', "Buffer tiene para consumir. Thread %s sigue\n", name);
         }
-        currentThread->Yield();
     }
 }
 
 void
 ThreadTestProdCons()
 {
-    // lock = new Lock("Lock buffer");
+    lock = new Lock("Lock buffer");
     cond_cons = new Condition("cond", new Lock("cond_lock"));
+    cond_prod = new Condition("cond", new Lock("prod_lock"));
 
-    char *nameConsumers[10];
+    char *nameConsumers[CONSUMERS];
     Thread *consumers[CONSUMERS];
 
     std::string nameCons = "consumer ";
@@ -89,16 +91,16 @@ ThreadTestProdCons()
         consumers[i]->Fork(Consumer, (void *)nameConsumers[i]);
     }
 
-    char *nameProducers[10];
-    Thread *producers[PRODUCERS - 1];
+    char *nameProducers[PRODUCERS-1];
+    Thread *producers[PRODUCERS-1];
 
-    for (int i = 0; i<PRODUCERS - 1; i++) {
+    for (int i = 0; i<PRODUCERS-1; i++) {
         nameProducers[i] = new char [64];
         strncpy(nameProducers[i], (nameProd + std::to_string(i)).c_str(), 64);
         
         producers[i] = new Thread(nameProducers[i]);
         
-        producers[i]->Fork(Consumer, (void *)nameProducers[i]);
+        producers[i]->Fork(Producer, (void *)nameProducers[i]);
     }
-    Producer((void *)"Principal Producer");
+    Producer("main Producer");
 }

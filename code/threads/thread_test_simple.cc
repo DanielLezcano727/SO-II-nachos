@@ -79,6 +79,6 @@ ThreadTestSimple()
     SimpleThread((void *) "1st");
 
     #ifdef SEMAPHORE_TEST
-        delete sem
+        delete sem;
     #endif
 }

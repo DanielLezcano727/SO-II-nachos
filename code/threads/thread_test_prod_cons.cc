@@ -72,7 +72,7 @@ Consumer(void *name)
 void
 ThreadTestProdCons()
 {
-    lock = new Lock("Lock buffer");
+    // lock = new Lock("Lock buffer");
     cond_cons = new Condition("cond", new Lock("cond_lock"));
     cond_prod = new Condition("cond", new Lock("prod_lock"));
 
@@ -102,5 +102,5 @@ ThreadTestProdCons()
         
         producers[i]->Fork(Producer, (void *)nameProducers[i]);
     }
-    Producer("main Producer");
+    Producer((void*)"main Producer");
 }

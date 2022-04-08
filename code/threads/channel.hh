@@ -11,13 +11,14 @@
 #define NACHOS_THREADS_CHANNEL__HH
 
 #include "thread.hh"
+#include "lock.hh"
 #include "condition.hh"
 
 class Channel {
 public:
 
     /// Initialize channel.
-    Channel(char* debugName, Lock *senderLock, Lock *listenerLock);
+    Channel(const char* debugName, Lock *senderLock, Lock *listenerLock);
 
     /// Delete channel.
     ~Channel();
@@ -27,12 +28,16 @@ public:
     void Receive(int* msg);
 
 private:
-    int buffer;
-    char *name;
-    Condition *sender;
-    bool s_busy;
+    Lock *lock_listener;
+    Lock *lock_sender;
     Condition *listener;
+    Condition *sender;
+
+    bool s_busy;
     bool l_busy;
+
+    int buffer;
+    const char *name;
 };
 
 

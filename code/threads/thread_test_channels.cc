@@ -2,7 +2,6 @@
 #include "thread_test_channels.hh"
 #include "system.hh"
 #include "channel.hh"
-#include "lock.hh"
 
 #include <stdio.h>
 #include <string>
@@ -19,25 +18,25 @@ Comunicador(void *name)
 {
     for (int i=0; i<END_AFTER; i++) {
         channel->Send(i);
+        currentThread->Yield();
     }
 }
 
 static void
 Receptor(void *name)
 {
-    int* msg = 0;
+    int msg;
     for (int i=0; i<END_AFTER; i++) {
-        channel->Receive(msg);
-        printf("%s recibio %d\n", (char*)name, *msg);
+        channel->Receive(&msg);
+        printf("%s recibio %d\n", (char*)name, msg);
+        currentThread->Yield();
     }
 }
 
 void
 ThreadTestChannels()
 {
-    Lock *s_lock = new Lock("sender_lock");
-    Lock *l_lock = new Lock("listener_lock");
-    channel = new Channel((char*)"channel", s_lock, l_lock);
+    channel = new Channel((char*)"channel");
 
     Thread *comunicadores[COMUNICADORES];
     Thread *receptores[RECEPTORES];

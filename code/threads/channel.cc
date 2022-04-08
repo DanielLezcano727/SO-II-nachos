@@ -2,19 +2,28 @@
 #include "channel.hh"
 #include "lock.hh"
 
-Channel::Channel(const char* debugName, Lock *senderLock, Lock *listenerLock) {
+Channel::Channel(const char* debugName) {
     name = debugName;
     s_busy = false;
     l_busy = false;
+
     lock_listener = new Lock("Listener lock");
     lock_sender = new Lock("Sender lock");
-    sender = new Condition("sender_cond", senderLock);
-    listener = new Condition("listener_cond", listenerLock);
+
+    cond_listener_lock = new Lock("cond_listener_lock");
+    cond_sender_lock = new Lock("cond_sender_lock");
+    sender = new Condition("sender_cond", cond_sender_lock);
+    listener = new Condition("listener_cond", cond_listener_lock);
 }
 
 Channel::~Channel() {
     delete sender;
     delete listener;
+    delete lock_sender;
+    delete lock_listener;
+    delete cond_sender_lock;
+    delete cond_listener_lock;
+
 }
 
 void Channel::Send(int msg) {

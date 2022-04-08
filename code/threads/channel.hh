@@ -18,7 +18,8 @@ class Channel {
 public:
 
     /// Initialize channel.
-    Channel(const char* debugName, Lock *senderLock, Lock *listenerLock);
+    // Deberiamos sobrecargarlo?
+    Channel(const char* debugName);
 
     /// Delete channel.
     ~Channel();
@@ -30,6 +31,8 @@ public:
 private:
     Lock *lock_listener;
     Lock *lock_sender;
+    Lock *cond_listener_lock;
+    Lock *cond_sender_lock;
     Condition *listener;
     Condition *sender;
 

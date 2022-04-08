@@ -40,12 +40,13 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName)
+Thread::Thread(const char *threadName, const bool callOnJoin=false)
 {
     name     = threadName;
     stackTop = nullptr;
     stack    = nullptr;
     status   = JUST_CREATED;
+    join     = callOnJoin;
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -276,7 +277,7 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 
     machineState[PCState]         = (uintptr_t) ThreadRoot;
     machineState[StartupPCState]  = (uintptr_t) InterruptEnable;
-    machineState[InitialPCState]  = (uintptr_t) func;
+    machineState[InitialPCState]  = (uintptr_t) func; //Mepa que deberiamos hacerlo aca. No entiendo bien donde cambia el currentThread
     machineState[InitialArgState] = (uintptr_t) arg;
     machineState[WhenDonePCState] = (uintptr_t) ThreadFinish;
 }

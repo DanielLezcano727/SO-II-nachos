@@ -40,13 +40,14 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName, const bool callOnJoin=false)
+Thread::Thread(const char *threadName, bool callOnJoin)
 {
     name     = threadName;
     stackTop = nullptr;
     stack    = nullptr;
     status   = JUST_CREATED;
     join     = callOnJoin;
+    alive = false;
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -91,6 +92,7 @@ void
 Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     ASSERT(func != nullptr);
+    this->parent = currentThread;
 
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);
@@ -142,6 +144,16 @@ Thread::Print() const
     printf("%s, ", name);
 }
 
+
+void 
+Thread::Join()
+{
+    ASSERT(join);
+
+    while (alive) {
+        Yield();
+    }
+}
 /// Called by `ThreadRoot` when a thread is done executing the forked
 /// procedure.
 ///
@@ -162,6 +174,9 @@ Thread::Finish()
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
 
     threadToBeDestroyed = currentThread;
+
+    alive = false;
+
     Sleep();  // Invokes `SWITCH`.
     // Not reached.
 }
@@ -277,7 +292,7 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 
     machineState[PCState]         = (uintptr_t) ThreadRoot;
     machineState[StartupPCState]  = (uintptr_t) InterruptEnable;
-    machineState[InitialPCState]  = (uintptr_t) func; //Mepa que deberiamos hacerlo aca. No entiendo bien donde cambia el currentThread
+    machineState[InitialPCState]  = (uintptr_t) func;
     machineState[InitialArgState] = (uintptr_t) arg;
     machineState[WhenDonePCState] = (uintptr_t) ThreadFinish;
 }

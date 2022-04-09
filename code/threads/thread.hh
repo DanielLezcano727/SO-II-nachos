@@ -97,7 +97,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-    Thread(const char *debugName, const bool callOnJoin=false);
+    Thread(const char *debugName, bool callOnJoin=false);
 
     /// Deallocate a Thread.
     ///
@@ -128,7 +128,7 @@ public:
 
     void Print() const;
 
-    void Join() const;
+    void Join();
 
 private:
     // Some of the private data for this class is listed above.
@@ -143,7 +143,8 @@ private:
 
     const char *name;
     bool join;
-    List<Thread*> childs;
+    bool alive;
+    Thread *parent;
 
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);

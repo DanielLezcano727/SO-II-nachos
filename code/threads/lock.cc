@@ -42,6 +42,9 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
+    if (scheduler->GetPriority(current) < scheduler->GetPriority(currentThread)) {
+        scheduler->TopPriority(current);
+    }
     sem->P();
     ASSERT(current == NULL);
     current = currentThread;
@@ -51,6 +54,8 @@ void
 Lock::Release()
 {
     ASSERT(IsHeldByCurrentThread());
+    scheduler->ReturnPriority(current);
+
     current = NULL;
     sem->V();
 }

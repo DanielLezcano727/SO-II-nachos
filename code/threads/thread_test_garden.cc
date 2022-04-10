@@ -40,18 +40,23 @@ ThreadTestGarden()
         sprintf(name, "Turnstile %u", i);
         unsigned *n = new unsigned;
         *n = i;
-        Thread *t = new Thread(name);
+        Thread *t = new Thread(name, true);
         t->Fork(Turnstile, (void *) n);
+
+        // Only one thread runs at a time until it finishes
+        // If every thread had it's own variable this would be solved
+        t->Join(); 
     }
 
     // Wait until all turnstile threads finish their work.  `Thread::Join` is
     // not implemented at the beginning, therefore an ad-hoc workaround is
     // applied here.
-    for (unsigned i = 0; i < NUM_TURNSTILES; i++) {
-        while (!done[i]) {
-            currentThread->Yield();
-        }
-    }
+    // for (unsigned i = 0; i < NUM_TURNSTILES; i++) {
+    //     while (!done[i]) {
+    //         currentThread->Yield();
+    //     }
+    // }
+
     printf("All turnstiles finished. Final count is %u (should be %u).\n",
            count, ITERATIONS_PER_TURNSTILE * NUM_TURNSTILES);
 }

@@ -47,7 +47,7 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     stack    = nullptr;
     status   = JUST_CREATED;
     join     = callOnJoin;
-    alive = false;
+    alive = true;
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -151,7 +151,7 @@ Thread::Join()
     ASSERT(join);
 
     while (alive) {
-        Yield();
+        currentThread->Yield();
     }
 }
 /// Called by `ThreadRoot` when a thread is done executing the forked

@@ -10,6 +10,7 @@
 #ifndef NACHOS_THREADS_SCHEDULER__HH
 #define NACHOS_THREADS_SCHEDULER__HH
 
+#define MAX_PRIORITY 4
 
 #include "thread.hh"
 #include "lib/list.hh"
@@ -42,8 +43,10 @@ public:
 private:
 
     // Queue of threads that are ready to run, but not running.
-    List<Thread*> *readyList;
+    List<Thread*> *readyList[MAX_PRIORITY];
 
+    int currentPriority;
+    int nextPriority;
 };
 
 

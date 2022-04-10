@@ -27,13 +27,18 @@
 /// Initialize the list of ready but not running threads to empty.
 Scheduler::Scheduler()
 {
-    readyList = new List<Thread *>;
+    for (int i=0; i<=MAX_PRIORITY; i++) {
+        readyList[i] = new List<Thread *>;
+    }
+    currentPriority = MAX_PRIORITY;
 }
 
 /// De-allocate the list of ready threads.
 Scheduler::~Scheduler()
 {
-    delete readyList;
+    for (int i=0; i<=MAX_PRIORITY; i++) {
+        delete readyList[i];
+    }
 }
 
 /// Mark a thread as ready, but not running.
@@ -48,7 +53,10 @@ Scheduler::ReadyToRun(Thread *thread)
     DEBUG('t', "Putting thread %s on ready list\n", thread->GetName());
 
     thread->SetStatus(READY);
-    readyList->Append(thread);
+
+    int priority = currentThread == thread ? currentPriority - 1 : MAX_PRIORITY;
+
+    readyList[priority]->Append(thread);
 }
 
 /// Return the next thread to be scheduled onto the CPU.
@@ -59,7 +67,11 @@ Scheduler::ReadyToRun(Thread *thread)
 Thread *
 Scheduler::FindNextToRun()
 {
-    return readyList->Pop();
+    int i;
+    for (i=MAX_PRIORITY; i>0 && readyList[i]->IsEmpty(); i--);
+
+    nextPriority = i;
+    return readyList[i]->Pop();
 }
 
 /// Dispatch the CPU to `nextThread`.
@@ -101,6 +113,8 @@ Scheduler::Run(Thread *nextThread)
     // `switch.s`.  You may have to think a bit to figure out what happens
     // after this, both from the point of view of the thread and from the
     // perspective of the “outside world”.
+    currentPriority = nextPriority;
+    nextPriority = MAX_PRIORITY;
 
     SWITCH(oldThread, nextThread);
 
@@ -138,6 +152,8 @@ ThreadPrint(Thread *t)
 void
 Scheduler::Print()
 {
-    printf("Ready list contents:\n");
-    readyList->Apply(ThreadPrint);
+    for (int i=MAX_PRIORITY; i>=0; i--) {
+        printf("Ready list %d contents:\n", i);
+        readyList[i]->Apply(ThreadPrint);
+    }
 }

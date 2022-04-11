@@ -31,16 +31,12 @@ public:
 private:
     Lock *lock_listener;
     Lock *lock_sender;
-    Lock *cond_listener_lock;
-    Lock *cond_sender_lock;
-    Condition *listener;
-    Condition *sender;
-
-    bool s_busy;
-    bool l_busy;
 
     int buffer;
     const char *name;
+
+    Semaphore *sem1;
+    Semaphore *sem2;
 };
 
 

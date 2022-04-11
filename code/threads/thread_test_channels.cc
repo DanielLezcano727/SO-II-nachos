@@ -7,9 +7,9 @@
 #include <string>
 #include <cstring>
 
-#define COMUNICADORES 2
-#define RECEPTORES 2
-#define END_AFTER 2
+#define COMUNICADORES 5
+#define RECEPTORES 5
+#define END_AFTER 10
 
 static Channel *channel;
 

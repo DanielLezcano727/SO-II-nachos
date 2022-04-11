@@ -7,9 +7,9 @@
 #include <string>
 #include <cstring>
 
-#define COMUNICADORES 3
-#define RECEPTORES 3
-#define END_AFTER 10
+#define COMUNICADORES 1
+#define RECEPTORES 2
+#define END_AFTER 2
 
 static Channel *channel;
 
@@ -18,6 +18,7 @@ Comunicador(void *name)
 {
     for (int i=0; i<END_AFTER; i++) {
         channel->Send(i);
+        printf("%s envió mensaje\n", (char*)name);
         currentThread->Yield();
     }
 }
@@ -28,7 +29,7 @@ Receptor(void *name)
     int msg;
     for (int i=0; i<END_AFTER; i++) {
         channel->Receive(&msg);
-        printf("%s recibio %d\n", (char*)name, msg);
+        printf("%s recibió %d\n", (char*)name, msg);
         currentThread->Yield();
     }
 }

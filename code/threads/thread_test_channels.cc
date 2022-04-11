@@ -7,7 +7,7 @@
 #include <string>
 #include <cstring>
 
-#define COMUNICADORES 1
+#define COMUNICADORES 2
 #define RECEPTORES 2
 #define END_AFTER 2
 
@@ -17,8 +17,8 @@ static void
 Comunicador(void *name)
 {
     for (int i=0; i<END_AFTER; i++) {
-        channel->Send(i);
-        printf("%s envió mensaje\n", (char*)name);
+        channel->Send(999);
+        printf("            %s envió mensaje\n", (char*)name);
         currentThread->Yield();
     }
 }
@@ -29,7 +29,7 @@ Receptor(void *name)
     int msg;
     for (int i=0; i<END_AFTER; i++) {
         channel->Receive(&msg);
-        printf("%s recibió %d\n", (char*)name, msg);
+        printf("            %s recibió %d\n", (char*)name, msg);
         currentThread->Yield();
     }
 }
@@ -64,5 +64,5 @@ ThreadTestChannels()
         receptores[j]->Fork(Receptor, (void *)nameReceptores[j]);
     }
 
-    Receptor((void*)"main Receptor");
+    Receptor((void*)"receptor main");
 }

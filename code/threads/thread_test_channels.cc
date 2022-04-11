@@ -7,8 +7,8 @@
 #include <string>
 #include <cstring>
 
-#define COMUNICADORES 3
-#define RECEPTORES 3
+#define COMUNICADORES 5
+#define RECEPTORES 5
 #define END_AFTER 10
 
 static Channel *channel;
@@ -18,6 +18,7 @@ Comunicador(void *name)
 {
     for (int i=0; i<END_AFTER; i++) {
         channel->Send(i);
+        printf("            %s envió mensaje\n", (char*)name);
         currentThread->Yield();
     }
 }
@@ -28,7 +29,7 @@ Receptor(void *name)
     int msg;
     for (int i=0; i<END_AFTER; i++) {
         channel->Receive(&msg);
-        printf("%s recibio %d\n", (char*)name, msg);
+        printf("            %s recibió %d\n", (char*)name, msg);
         currentThread->Yield();
     }
 }
@@ -50,18 +51,23 @@ ThreadTestChannels()
         
         strncpy(nameComunicadores[i], (nameCom + std::to_string(i)).c_str(), 64);
         
-        comunicadores[i] = new Thread(nameComunicadores[i]);
+        comunicadores[i] = new Thread(nameComunicadores[i], true);
         comunicadores[i]->Fork(Comunicador, (void *)nameComunicadores[i]);
     }
 
-    for(int j=0; j<RECEPTORES-1; j++) {
+    for(int j=0; j<RECEPTORES; j++) {
         nameReceptores[j] = new char [64];
         
         strncpy(nameReceptores[j], (nameRec + std::to_string(j)).c_str(), 64);
         
-        receptores[j] = new Thread(nameReceptores[j]);
+        receptores[j] = new Thread(nameReceptores[j], true);
         receptores[j]->Fork(Receptor, (void *)nameReceptores[j]);
     }
 
-    Receptor((void*)"main Receptor");
+    for(int i=0; i<COMUNICADORES; i++)
+        comunicadores[i]->Join();
+    
+
+    for(int i=0; i<RECEPTORES; i++)
+        receptores[i]->Join();
 }

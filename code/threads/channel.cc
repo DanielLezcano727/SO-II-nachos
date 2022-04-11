@@ -1,58 +1,52 @@
 
 #include "channel.hh"
 #include "lock.hh"
+#include "system.hh"
 
 Channel::Channel(const char* debugName) {
     name = debugName;
-    s_busy = false;
-    l_busy = false;
 
     lock_listener = new Lock("Listener lock");
     lock_sender = new Lock("Sender lock");
 
-    cond_listener_lock = new Lock("cond_listener_lock");
-    cond_sender_lock = new Lock("cond_sender_lock");
-    sender = new Condition("sender_cond", cond_sender_lock);
-    listener = new Condition("listener_cond", cond_listener_lock);
+    sem1 = new Semaphore("sem1", 0);
+    sem2 = new Semaphore("sem2", 0);
 }
 
 Channel::~Channel() {
-    delete sender;
-    delete listener;
-    delete lock_sender;
     delete lock_listener;
-    delete cond_sender_lock;
-    delete cond_listener_lock;
+    delete lock_sender;
 
+    delete sem1;
+    delete sem2;
 }
 
 void Channel::Send(int msg) {
+    // Adquiero lock para evitar la entrada de otros senders
     lock_sender->Acquire();
-    if (!l_busy) {
-        s_busy = true;
-        sender->Wait();
-    }
 
+    // Intento adquirir el primer semáforo, si llego primero me duermo
+    // Si llego segundo paso directo, el listener está esperando
+    sem1->P();
     buffer = msg;
-    s_busy = false;
+    // Le cedo el segundo semáforo al listener, ya escribí mi mensaje
+    sem2->V();
 
-    listener->Signal();
-    sender->Wait();
-
+    // Libero el espacio de sender
     lock_sender->Release();
 }
 
 void Channel::Receive(int* msg) {
+    // Adquiero lock para evitar la entrada de otros listeners
     lock_listener->Acquire();
-    l_busy = true;
-    if (s_busy) {
-        sender->Signal();
-    }
-
-    listener->Wait();
+    
+    // Aviso de mi llegada, si llegué primero el aviso queda listo
+    // si llegué segundo despierto al sender
+    sem1->V();
+    // Espero al mensaje del sender
+    sem2->P();
     *msg = buffer;
-    l_busy = false;
-
-    sender->Signal();
+    
+    // Libero el espacio de listener
     lock_listener->Release();
 }

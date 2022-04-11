@@ -1,0 +1,1 @@
+No se puede utilizar priority inheritance con semáforos ya que no se sabe qué proceso es el que va a ejecutar un V() y así despertar a nuestro hilo de interés, por lo que no se sabe a qué hilo subir de prioridad.

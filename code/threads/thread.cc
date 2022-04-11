@@ -40,12 +40,14 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName)
+Thread::Thread(const char *threadName, bool callOnJoin)
 {
     name     = threadName;
     stackTop = nullptr;
     stack    = nullptr;
     status   = JUST_CREATED;
+    join     = callOnJoin;
+    alive = true;
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -90,6 +92,7 @@ void
 Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     ASSERT(func != nullptr);
+    this->parent = currentThread;
 
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);
@@ -141,6 +144,16 @@ Thread::Print() const
     printf("%s, ", name);
 }
 
+
+void 
+Thread::Join()
+{
+    ASSERT(join);
+
+    while (alive) {
+        currentThread->Yield();
+    }
+}
 /// Called by `ThreadRoot` when a thread is done executing the forked
 /// procedure.
 ///
@@ -161,6 +174,9 @@ Thread::Finish()
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
 
     threadToBeDestroyed = currentThread;
+
+    alive = false;
+
     Sleep();  // Invokes `SWITCH`.
     // Not reached.
 }

@@ -14,8 +14,8 @@ Channel::Channel(const char* debugName) {
 }
 
 Channel::~Channel() {
-    delete sender;
-    delete listener;
+    delete lock_listener;
+    delete lock_sender;
 
     delete sem1;
     delete sem2;

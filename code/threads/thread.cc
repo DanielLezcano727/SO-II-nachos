@@ -300,21 +300,14 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
 
-bool
+void
 AddFile(OpenFile *file) {
-    if (file == nullptr)
-        return false;
-    
     fileList->Append(file)
-    
 }
 
-bool
+void
 RemFile(OpenFile *fid) {
-    if (fid >= fileListSize)
-        return false;
-    
-
+    fileList->Remove(file);
 }
 
 /// Save the CPU state of a user program on a context switch.

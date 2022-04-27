@@ -24,6 +24,7 @@
 
 #include "transfer.hh"
 #include "syscall.h"
+#include "filesys/open_file.hh"
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
 
@@ -184,8 +185,34 @@ SyscallHandler(ExceptionType _et)
 
         case SC_CLOSE: {
             int fid = machine->ReadRegister(4);
-            currentThread->RemFile((OpenFile*) fid);
+            OpenFile* opfid = (OpenFile*) fid;
+
+            if (opfid == nullptr)
+                DEBUG('e',"Invalid file id");
+            currentThread->RemFile(opfid);
+            delete opfid;
             DEBUG('e', "`Close` requested for id %u.\n", fid);
+            break;
+        }
+
+        case SC_OPEN: {
+            int filenameAddr = machine->ReadRegister(4);
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename is null.\n");
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                      FILE_NAME_MAX_LEN);
+            }
+
+            OpenFile* fid = fileSystem->Open(filename);
+            currentThread->AddFile(fid);
+            DEBUG('e', "`Open` requested for id %u.\n", fid);
+
+            machine->WriteRegister(2, fid);
             break;
         }
 

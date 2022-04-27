@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 
+#define FILE_SIZE 256
 
 static void
 IncrementPC()
@@ -102,7 +103,84 @@ SyscallHandler(ExceptionType _et)
                       FILE_NAME_MAX_LEN);
             }
 
+            if (!fileSystem->Create(filename, FILE_SIZE)) {
+                DEBUG('e', "Error: couldn't create");
+            }
+
             DEBUG('e', "`Create` requested for file `%s`.\n", filename);
+            break;
+        }
+
+        case SC_REMOVE: {
+            int filenameAddr = machine->ReadRegister(4);
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename string is null.\n");
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                      FILE_NAME_MAX_LEN);
+            }
+
+            if (!fileSystem->Remove(filename)) {
+                DEBUG('e', "Error: couldn't remove, file doesn't exist");
+            }
+
+            DEBUG('e', "`Create` requested for file `%s`.\n", filename);
+            break;
+        }
+
+        case SC_EXIT: {
+            int status = machine->ReadRegister(4);
+
+            currentThread->Finish(status);
+
+            break;
+        }
+
+        case SC_WRITE: {
+            int stringAddr = machine->ReadRegister(4);
+            int size = machine->ReadRegister(5);
+
+            if (!stringAddr)
+                DEBUG('e', "Error: address to string is null.\n");
+            else if (size < 0)
+                DEBUG('e', "Error: invalid string size.\n");
+            else {
+                char str[size];
+
+                ReadBufferFromUser(stringAddr, str, size);
+
+                for (int i = 0; i < size; i++) {
+                    synchConsole->PutChar(str[i]);
+                }
+            }
+
+            break;
+        }
+
+        case SC_READ: {
+            int usrAddr = machine->ReadRegister(4);
+            int size = machine->ReadRegister(5);
+
+            int i;
+            if (!usrAddr)
+                DEBUG('e', "Error: address to usr is null.\n");
+            else if (size < 0)
+                DEBUG('e', "Error: invalid size.\n");
+            else {
+                char str[size];
+
+                for(i = 0; i < size - 1; i++) {
+                    str[i] = synchConsole->GetChar();
+                }
+                str[i] = '\0';
+
+                WriteStringToUser(str, usrAddr);
+            }
+
             break;
         }
 

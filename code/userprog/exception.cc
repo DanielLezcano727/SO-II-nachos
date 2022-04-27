@@ -133,9 +133,7 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_EXIT: {
-            int status = machine->ReadRegister(4);
-
-            currentThread->Finish(status);
+            currentThread->Finish();
 
             break;
         }
@@ -186,6 +184,7 @@ SyscallHandler(ExceptionType _et)
 
         case SC_CLOSE: {
             int fid = machine->ReadRegister(4);
+            currentThread->RemFile((OpenFile*) fid);
             DEBUG('e', "`Close` requested for id %u.\n", fid);
             break;
         }

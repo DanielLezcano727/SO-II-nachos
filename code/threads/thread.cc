@@ -300,6 +300,23 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
 
+bool
+AddFile(OpenFile *file) {
+    if (file == nullptr)
+        return false;
+    
+    fileList->Append(file)
+    
+}
+
+bool
+RemFile(OpenFile *fid) {
+    if (fid >= fileListSize)
+        return false;
+    
+
+}
+
 /// Save the CPU state of a user program on a context switch.
 ///
 /// Note that a user program thread has *two* sets of CPU registers -- one

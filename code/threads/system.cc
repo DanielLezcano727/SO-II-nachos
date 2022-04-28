@@ -231,7 +231,7 @@ Initialize(int argc, char **argv)
     Debugger *d = debugUserProg ? new Debugger : nullptr;
     machine = new Machine(d);  // This must come first.
     SetExceptionHandlers();
-    synchConsole = new SynchConsole(stdin, stdout); // Como inicializamos esta consola?
+    synchConsole = new SynchConsole(stdin, stdout); // es necesario?
 #endif
 
 #ifdef FILESYS

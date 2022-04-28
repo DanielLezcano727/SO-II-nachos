@@ -50,6 +50,9 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     alive = true;
 #ifdef USER_PROGRAM
     space    = nullptr;
+    fileTable = new Table<OpenFile*>;
+    fileTable->Add(nullptr); //< CONSOLE_INPUT
+    fileTable->Add(nullptr); //< CONSOLE_OUTPUT
 #endif
 }
 

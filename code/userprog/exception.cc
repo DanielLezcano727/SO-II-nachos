@@ -159,8 +159,8 @@ SyscallHandler(ExceptionType _et)
                     for (int i = 0; i < size; i++) {
                         synchConsole->PutChar(str[i]);
                     }
-                }else if (currentThread->fileList->Has(id)) {
-                    currentThread->fileList->id.Write(str, size);
+                }else if (currentThread->fileList->HasKey(id)) {
+                    currentThread->fileList->Get(id)->Write(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
@@ -189,8 +189,8 @@ SyscallHandler(ExceptionType _et)
                         str[i] = synchConsole->GetChar();
                     }
                     str[i] = '\0';
-                }else if (currentThread->fileList->Has(id)) {
-                    i = currentThread->fileList->id.Read(str, size);
+                }else if (currentThread->fileList->HasKey(id)) {
+                    i = currentThread->fileList->Get(id)->Read(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
@@ -206,11 +206,13 @@ SyscallHandler(ExceptionType _et)
             int fid = machine->ReadRegister(4);
             OpenFile* opfid = (OpenFile*) fid;
 
-            if (opfid == nullptr)
+            if (fid < 0)
                 DEBUG('e',"Invalid file id");
-            currentThread->RemFile(opfid);
-            delete opfid;
-            DEBUG('e', "`Close` requested for id %u.\n", fid);
+            else if (currentThread->fileTable->HasKey(fid))
+                currentThread->fileTable->Remove(fid);
+            else {
+                DEBUG('e', "Error: file descriptor not opened.\n");
+            }
             break;
         }
 
@@ -228,10 +230,23 @@ SyscallHandler(ExceptionType _et)
             }
 
             OpenFile* fid = fileSystem->Open(filename);
-            currentThread->AddFile(fid);
+            currentThread->fileTable->Add(fid);
             DEBUG('e', "`Open` requested for id %u.\n", fid);
 
             machine->WriteRegister(2, fid);
+            break;
+        }
+
+        case SC_JOIN: {
+            break;
+        }
+
+        case SC_EXEC: {
+            break;
+        }
+        
+        case SC_PS: {
+            scheduler->Print();
             break;
         }
 

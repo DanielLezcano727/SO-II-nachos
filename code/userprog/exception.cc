@@ -142,18 +142,27 @@ SyscallHandler(ExceptionType _et)
         case SC_WRITE: {
             int stringAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
+            OpenFileId id = machine->ReadRegister(6);
 
             if (!stringAddr)
                 DEBUG('e', "Error: address to string is null.\n");
             else if (size < 0)
                 DEBUG('e', "Error: invalid string size.\n");
+            else if (id < CONSOLE_OUTPUT)
+                DEBUG('e', "Error: invalid file descriptor.\n");
             else {
                 char str[size];
 
                 ReadBufferFromUser(stringAddr, str, size);
 
-                for (int i = 0; i < size; i++) {
-                    synchConsole->PutChar(str[i]);
+                if (id == CONSOLE_OUTPUT) {
+                    for (int i = 0; i < size; i++) {
+                        synchConsole->PutChar(str[i]);
+                    }
+                }else if (currentThread->fileList->Has(id)) {
+                    currentThread->fileList->id.Write(str, size);
+                }else {
+                    DEBUG('e', "Error: no file with that id");
                 }
             }
 
@@ -163,23 +172,33 @@ SyscallHandler(ExceptionType _et)
         case SC_READ: {
             int usrAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
+            OpenFileId id = machine->ReadRegister(6);
 
             int i;
             if (!usrAddr)
                 DEBUG('e', "Error: address to usr is null.\n");
             else if (size < 0)
                 DEBUG('e', "Error: invalid size.\n");
+            else if (id <= CONSOLE_OUTPUT)
+                DEBUG('e', "Error: invalid file descriptor.\n");
             else {
                 char str[size];
 
-                for(i = 0; i < size - 1; i++) {
-                    str[i] = synchConsole->GetChar();
+                if (id == CONSOLE_INPUT) {
+                    for(i = 0; i < size - 1; i++) {
+                        str[i] = synchConsole->GetChar();
+                    }
+                    str[i] = '\0';
+                }else if (currentThread->fileList->Has(id)) {
+                    i = currentThread->fileList->id.Read(str, size);
+                }else {
+                    DEBUG('e', "Error: no file with that id");
                 }
-                str[i] = '\0';
 
                 WriteStringToUser(str, usrAddr);
             }
-
+            
+            machine->WriteRegister(2, i);
             break;
         }
 

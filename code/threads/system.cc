@@ -12,6 +12,7 @@
 #ifdef USER_PROGRAM
 #include "userprog/debugger.hh"
 #include "userprog/exception.hh"
+#include "synch_console.hh"
 #endif
 
 #include <stdlib.h>
@@ -230,6 +231,7 @@ Initialize(int argc, char **argv)
     Debugger *d = debugUserProg ? new Debugger : nullptr;
     machine = new Machine(d);  // This must come first.
     SetExceptionHandlers();
+    synchConsole = new SynchConsole(stdin, stdout); // Como inicializamos esta consola?
 #endif
 
 #ifdef FILESYS
@@ -260,6 +262,7 @@ Cleanup()
 
 #ifdef USER_PROGRAM
     delete machine;
+    delete synchConsole;
 #endif
 
 #ifdef FILESYS_NEEDED

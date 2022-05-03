@@ -22,6 +22,7 @@ void ReadBufferFromUser(int userAddress, char *outBuffer,
         count++;
         ASSERT(machine->ReadMem(userAddress++, 1, &temp));
         *outBuffer = (unsigned char) temp;
+        outBuffer++;
     } while (count < byteCount);
 }
 

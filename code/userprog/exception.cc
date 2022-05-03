@@ -30,6 +30,10 @@
 
 #ifdef MULTIPROG
     #include "prog_test.cc"
+    struct Arguments {
+        char* filename;
+        int args;
+    };
 #endif
 
 #include <stdio.h>
@@ -96,6 +100,7 @@ SyscallHandler(ExceptionType _et)
             break;
 
         case SC_CREATE: {
+            DEBUG('e', "`Create` requested\n");
             int filenameAddr = machine->ReadRegister(4);
             if (filenameAddr == 0) {
                 DEBUG('e', "Error: address to filename string is null.\n");
@@ -111,12 +116,14 @@ SyscallHandler(ExceptionType _et)
             if (!fileSystem->Create(filename, FILE_SIZE)) {
                 DEBUG('e', "Error: couldn't create");
             }
+            DEBUG('e', "`Create` done for file `%s`.\n", filename);
 
-            DEBUG('e', "`Create` requested for file `%s`.\n", filename);
             break;
         }
 
         case SC_REMOVE: {
+            DEBUG('e', "`Create` requested\n");
+
             int filenameAddr = machine->ReadRegister(4);
             if (filenameAddr == 0) {
                 DEBUG('e', "Error: address to filename string is null.\n");
@@ -133,7 +140,7 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "Error: couldn't remove, file doesn't exist");
             }
 
-            DEBUG('e', "`Create` requested for file `%s`.\n", filename);
+            DEBUG('e', "`Create` done for file `%s`.\n", filename);
             break;
         }
 
@@ -178,7 +185,7 @@ SyscallHandler(ExceptionType _et)
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
-            int i;
+            int i = -1;
             if (!usrAddr)
                 DEBUG('e', "Error: address to usr is null.\n");
             else if (size < 0)
@@ -208,13 +215,13 @@ SyscallHandler(ExceptionType _et)
 
         case SC_CLOSE: {
             int fid = machine->ReadRegister(4);
-            OpenFile* opfid = (OpenFile*) fid;
 
             if (fid < 0)
                 DEBUG('e',"Invalid file id");
-            else if (currentThread->fileTable->HasKey(fid))
-                currentThread->fileTable->Remove(fid);
-            else {
+            else if (currentThread->fileTable->HasKey(fid)) {
+                OpenFile* item = currentThread->fileTable->Get(fid);
+                currentThread->fileTable->Remove(item);
+            }else {
                 DEBUG('e', "Error: file descriptor not opened.\n");
             }
             break;
@@ -234,15 +241,27 @@ SyscallHandler(ExceptionType _et)
             }
 
             OpenFile* fid = fileSystem->Open(filename);
-            currentThread->fileTable->Add(fid);
-            DEBUG('e', "`Open` requested for id %u.\n", fid);
+            if (fid != nullptr) {
+                int id = currentThread->fileTable->Add(fid);
+                DEBUG('e', "`Open` requested for id %u.\n", id);
+            }else {
+                fid = -1;
+            }
 
-            machine->WriteRegister(2, fid);
+            machine->WriteRegister(2, id);
             break;
         }
 
         case SC_JOIN: {
-            break;
+            SpaceId sid = machine->ReadRegister(4);
+        if (threadTable->HasKey(sid)) {
+            threadTable->Get(sid)->Join();
+            // No se si la idea es hacer join del llamante con el llamado o al revés
+        }else {
+            DEBUG('e', "No thread with sid: %d\n", sid);
+        }
+
+        break;
         }
 
         case SC_EXEC: {
@@ -251,8 +270,9 @@ SyscallHandler(ExceptionType _et)
                 int argsAddr = machine->ReadRegister(5);
                 int joinable = machine->ReadRegister(6);
                 if (filenameAddr == 0) {
-                DEBUG('e', "Error: address to filename is null.\n");
+                    DEBUG('e', "Error: address to filename is null.\n");
                 }
+
 
                 char filename[FILE_NAME_MAX_LEN + 1];
                 if (!ReadStringFromUser(filenameAddr,
@@ -263,21 +283,13 @@ SyscallHandler(ExceptionType _et)
 
                 ASSERT(filename != nullptr);
 
-                OpenFile *executable = fileSystem->Open(filename);
-                if (executable == nullptr) {
-                    printf("Unable to open file %s\n", filename);
-                    return;
-                }
-
-                AddressSpace *space = new AddressSpace(executable);
-                currentThread->space = space;
-
-                delete executable;
-
-                currentThread->Fork(StartProc, (void *) filename);
-                machine->WriteRegister(2, 0);
+                Arguments threadArgs = {filename, argsAddr}
+                // Acá habría que guardar los registros antes del fork creo, ni idea como
+                int childPid = currentThread->Fork(StartProc, (void *) threadArgs);
+                machine->WriteRegister(2, childPid);
             #else
                 DEBUG('e',"Multiprogramming is not defined\n");
+                machine->WriteRegister(2, -1);
             #endif
             break;
         }
@@ -294,6 +306,42 @@ SyscallHandler(ExceptionType _et)
     }
 
     IncrementPC();
+}
+
+void
+StartProc(arguments threadArgs)
+{
+    char* filename = threadArgs.filename;
+    int argsAddr = threadArgs.args
+    ASSERT(filename != nullptr);
+
+    OpenFile *executable = fileSystem->Open(filename);
+    if (executable == nullptr) {
+        printf("Unable to open file %s\n", filename);
+        return;
+    }
+
+    AddressSpace *space = new AddressSpace(executable);
+    currentThread->space = space;
+
+    delete executable;
+
+    space->InitRegisters();  // Set the initial register values.
+    space->RestoreState();   // Load page table register.
+
+    if (argsAddr != nullptr)
+    {
+        // REVISAR ESTA PARTE PORQUE NI IDEA
+        unsigned argc = WriteArgs((char **)argsAddr);
+        machine->WriteRegister(4, argc);
+        int sp = machine->ReadRegister(STACK_REG);
+        machine->WriteRegister(5, sp);
+        machine->WriteRegister(STACK_REG, sp - 24);
+    }
+
+    machine->Run();  // Jump to the user progam.
+    ASSERT(false);   // `machine->Run` never returns; the address space
+                     // exits by doing the system call `Exit`.
 }
 
 

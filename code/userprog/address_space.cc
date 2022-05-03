@@ -40,7 +40,6 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     pageTable = new TranslationEntry[numPages];
     for (unsigned i = 0; i < numPages; i++) {
         pageTable[i].virtualPage  = i;
-          // For now, virtual page number = physical page number.
         pageTable[i].physicalPage = pages->Find();
         pageTable[i].valid        = true;
         pageTable[i].use          = false;
@@ -66,18 +65,18 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
         uint32_t virtualAddr = exe.GetCodeAddr();
         DEBUG('a', "Initializing code segment, at 0x%X, size %u\n",
               virtualAddr, codeSize);
-        for (unsigned i = 0; i < DivRoundUp(codeSize, PAGE_SIZE); i++) {
-            physicalAddr = Translate(virtualAddr);
-            exe.ReadCodeBlock(&mainMemory[physicalAddr], codeSize, 0);
+        for (unsigned i = 0; i < codeSize; i++) {
+            physicalAddr = Translate(virtualAddr + i);
+            exe.ReadCodeBlock(&mainMemory[physicalAddr], 1, i);
         }
     }
     if (initDataSize > 0) {
         uint32_t virtualAddr = exe.GetInitDataAddr();
         DEBUG('a', "Initializing data segment, at 0x%X, size %u\n",
               virtualAddr, initDataSize);
-        for (unsigned i = 0; i < DivRoundUp(codeSize, PAGE_SIZE); i++) {
-            physicalAddr = Translate(virtualAddr);
-            exe.ReadDataBlock(&mainMemory[virtualAddr], initDataSize, 0);
+        for (unsigned i = 0; i < initDataSize; i++) {
+            physicalAddr = Translate(virtualAddr + i);
+            exe.ReadDataBlock(&mainMemory[physicalAddr], 1, i);
         }
     }
 

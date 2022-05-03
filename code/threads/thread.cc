@@ -50,6 +50,7 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     alive = true;
 #ifdef USER_PROGRAM
     space    = nullptr;
+    sid = threadTable->Add(this);
     fileTable = new Table<OpenFile*>;
     fileTable->Add(nullptr); //< CONSOLE_INPUT
     fileTable->Add(nullptr); //< CONSOLE_OUTPUT
@@ -73,6 +74,11 @@ Thread::~Thread()
         SystemDep::DeallocBoundedArray((char *) stack,
                                        STACK_SIZE * sizeof *stack);
     }
+    #ifdef USER_PROGRAM
+        delete space;
+        delete fileTable;
+        threadTable->Remove(sid);
+    #endif
 }
 
 /// Invoke `(*func)(arg)`, allowing caller and callee to execute

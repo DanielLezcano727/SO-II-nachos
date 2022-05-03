@@ -48,7 +48,7 @@ public:
     void RestoreState();
 
 private:
-
+    unsigned int Translate(unsigned int virtualAddr);
     /// Assume linear page table translation for now!
     TranslationEntry *pageTable;
 

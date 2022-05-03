@@ -30,6 +30,8 @@ Interrupt *interrupt;         ///< Interrupt status.
 Statistics *stats;            ///< Performance metrics.
 Timer *timer;                 ///< The hardware timer device, for invoking
                               ///< context switches.
+Bitmap *pages;      
+#define NUM_VIRTUAL_PAGES 4                      
 
 // 2007, Jose Miguel Santos Espino
 PreemptiveScheduler *preemptiveScheduler = nullptr;
@@ -135,6 +137,8 @@ Initialize(int argc, char **argv)
     // 2007, Jose Miguel Santos Espino
     bool preemptiveScheduling = false;
     long long timeSlice;
+
+    pages = new Bitmap(NUM_VIRTUAL_PAGES);
 
 #ifdef USER_PROGRAM
     bool debugUserProg = false;  // Single step user program.
@@ -255,6 +259,7 @@ Cleanup()
 
     // 2007, Jose Miguel Santos Espino
     delete preemptiveScheduler;
+    delete pages;
 
 #ifdef NETWORK
     delete postOffice;

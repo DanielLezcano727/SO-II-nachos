@@ -28,6 +28,10 @@
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
 
+#ifdef MULTIPROG
+    #include "prog_test.cc"
+#endif
+
 #include <stdio.h>
 
 #define FILE_SIZE 256
@@ -242,6 +246,39 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_EXEC: {
+            #ifdef MULTIPROG
+                int filenameAddr = machine->ReadRegister(4);
+                int argsAddr = machine->ReadRegister(5);
+                int joinable = machine->ReadRegister(6);
+                if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename is null.\n");
+                }
+
+                char filename[FILE_NAME_MAX_LEN + 1];
+                if (!ReadStringFromUser(filenameAddr,
+                                        filename, sizeof filename)) {
+                    DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                        FILE_NAME_MAX_LEN);
+                }
+
+                ASSERT(filename != nullptr);
+
+                OpenFile *executable = fileSystem->Open(filename);
+                if (executable == nullptr) {
+                    printf("Unable to open file %s\n", filename);
+                    return;
+                }
+
+                AddressSpace *space = new AddressSpace(executable);
+                currentThread->space = space;
+
+                delete executable;
+
+                currentThread->Fork(StartProc, (void *) filename);
+                machine->WriteRegister(2, 0);
+            #else
+                DEBUG('e',"Multiprogramming is not defined\n");
+            #endif
             break;
         }
         

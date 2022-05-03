@@ -30,9 +30,7 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
 
-    ASSERT(numPages <= NUM_PHYS_PAGES);
-      // Check we are not trying to run anything too big -- at least until we
-      // have virtual memory.
+    ASSERT(numPages <= pages->CountClear());
 
     DEBUG('a', "Initializing address space, num pages %u, size %u\n",
           numPages, size);
@@ -43,7 +41,7 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     for (unsigned i = 0; i < numPages; i++) {
         pageTable[i].virtualPage  = i;
           // For now, virtual page number = physical page number.
-        pageTable[i].physicalPage = i;
+        pageTable[i].physicalPage = pages->Find();
         pageTable[i].valid        = true;
         pageTable[i].use          = false;
         pageTable[i].dirty        = false;
@@ -56,22 +54,31 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 
     // Zero out the entire address space, to zero the unitialized data
     // segment and the stack segment.
-    memset(mainMemory, 0, size);
+
+    for (unsigned i = 0; i < numPages; i++)
+        memset(mainMemory + pageTable[i].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
 
     // Then, copy in the code and data segments into memory.
     uint32_t codeSize = exe.GetCodeSize();
     uint32_t initDataSize = exe.GetInitDataSize();
+    unsigned int physicalAddr;
     if (codeSize > 0) {
         uint32_t virtualAddr = exe.GetCodeAddr();
         DEBUG('a', "Initializing code segment, at 0x%X, size %u\n",
               virtualAddr, codeSize);
-        exe.ReadCodeBlock(&mainMemory[virtualAddr], codeSize, 0);
+        for (unsigned i = 0; i < DivRoundUp(codeSize, PAGE_SIZE); i++) {
+            physicalAddr = Translate(virtualAddr);
+            exe.ReadCodeBlock(&mainMemory[physicalAddr], codeSize, 0);
+        }
     }
     if (initDataSize > 0) {
         uint32_t virtualAddr = exe.GetInitDataAddr();
         DEBUG('a', "Initializing data segment, at 0x%X, size %u\n",
               virtualAddr, initDataSize);
-        exe.ReadDataBlock(&mainMemory[virtualAddr], initDataSize, 0);
+        for (unsigned i = 0; i < DivRoundUp(codeSize, PAGE_SIZE); i++) {
+            physicalAddr = Translate(virtualAddr);
+            exe.ReadDataBlock(&mainMemory[virtualAddr], initDataSize, 0);
+        }
     }
 
 }
@@ -81,7 +88,9 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 /// Nothing for now!
 AddressSpace::~AddressSpace()
 {
-    delete [] pageTable;
+    for (unsigned i = 0; i < numPages; i++)
+        pages->Clear(pageTable[i].physicalPage);
+    delete[] pageTable;
 }
 
 /// Set the initial values for the user-level register set.
@@ -129,4 +138,11 @@ AddressSpace::RestoreState()
 {
     machine->GetMMU()->pageTable     = pageTable;
     machine->GetMMU()->pageTableSize = numPages;
+}
+
+unsigned int AddressSpace::Translate(unsigned int virtualAddr)
+{
+  uint32_t page = virtualAddr / PAGE_SIZE;
+  uint32_t offset = virtualAddr % PAGE_SIZE;
+  return pageTable[page].physicalPage * PAGE_SIZE + offset;
 }

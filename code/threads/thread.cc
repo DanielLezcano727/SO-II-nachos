@@ -98,11 +98,11 @@ Thread::~Thread()
 /// * `func` is the procedure to run concurrently.
 /// * `arg` is a single argument to be passed to the procedure.
 void
-Thread::Fork(VoidFunctionPtr func, void *arg)
+Thread::Fork(VoidFunctionPtr func, void *arg, bool joinable=false)
 {
     ASSERT(func != nullptr);
     this->parent = currentThread;
-
+    join = joinable;
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);
 

@@ -170,8 +170,8 @@ SyscallHandler(ExceptionType _et)
                     for (int i = 0; i < size; i++) {
                         synchConsole->PutChar(str[i]);
                     }
-                }else if (currentThread->fileList->HasKey(id)) {
-                    currentThread->fileList->Get(id)->Write(str, size);
+                }else if (currentThread->fileTable->HasKey(id)) {
+                    currentThread->fileTable->Get(id)->Write(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
@@ -200,8 +200,8 @@ SyscallHandler(ExceptionType _et)
                         str[i] = synchConsole->GetChar();
                     }
                     str[i] = '\0';
-                }else if (currentThread->fileList->HasKey(id)) {
-                    i = currentThread->fileList->Get(id)->Read(str, size);
+                }else if (currentThread->fileTable->HasKey(id)) {
+                    i = currentThread->fileTable->Get(id)->Read(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
@@ -253,15 +253,8 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_JOIN: {
-            SpaceId sid = machine->ReadRegister(4);
-        if (threadTable->HasKey(sid)) {
-            threadTable->Get(sid)->Join();
-            // No se si la idea es hacer join del llamante con el llamado o al revés
-        }else {
-            DEBUG('e', "No thread with sid: %d\n", sid);
-        }
-
-        break;
+            currentThread->Join();
+            break;
         }
 
         case SC_EXEC: {
@@ -282,12 +275,11 @@ SyscallHandler(ExceptionType _et)
 
                 ASSERT(filename != nullptr);
                 char** savedArgs = SaveArgs(argsAddr);
-                Arguments threadArgs; // Debería ser puntero?
-                threadArgs.filename = filename;
-                threadArgs.args = savedArgs;
-                space->saveState(); // Revisar en thread.cc existe una funcion que hace lo mismo, pero menciona que hay 2 sets de registros de CPU los cuales guardar
-                // currentThread->SaveUserState();
-                int childPid = currentThread->Fork(StartProc, (void *) threadArgs);
+                Arguments* threadArgs = new Arguments();
+                threadArgs->filename = filename;
+                threadArgs->args = savedArgs;
+                currentThread->SaveUserState();
+                int childPid = currentThread->Fork(StartProc, (void *) threadArgs, joinable);
                 machine->WriteRegister(2, childPid);
             #else
                 DEBUG('e',"Multiprogramming is not defined\n");
@@ -311,11 +303,11 @@ SyscallHandler(ExceptionType _et)
 }
 
 void
-StartProc(arguments threadArgs)
+StartProc(void *threadArgs)
 {
-    threadArgs = (Arguments) threadArgs;
-    char* filename = threadArgs.filename;
-    char** args = threadArgs.args;
+    threadArgs = (Arguments*) threadArgs;
+    char* filename = threadArgs->filename;
+    char** args = threadArgs->args;
     ASSERT(filename != nullptr);
 
     OpenFile *executable = fileSystem->Open(filename);
@@ -338,9 +330,9 @@ StartProc(arguments threadArgs)
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
-        machine->WriteRegister(STACK_REG, sp - 24); // Revisar si esta es la manera correcta de restar 24 como indica args.hh
+        machine->WriteRegister(STACK_REG, sp - 24);
     }
-
+    delete threadArgs;
     machine->Run();  // Jump to the user progam.
     ASSERT(false);   // `machine->Run` never returns; the address space
                      // exits by doing the system call `Exit`.

@@ -36,6 +36,7 @@ Bitmap *pages;
 // 2007, Jose Miguel Santos Espino
 PreemptiveScheduler *preemptiveScheduler = nullptr;
 const long long DEFAULT_TIME_SLICE = 50000;
+int userRegisters[NUM_TOTAL_REGS];
 
 #ifdef FILESYS_NEEDED
 FileSystem *fileSystem;

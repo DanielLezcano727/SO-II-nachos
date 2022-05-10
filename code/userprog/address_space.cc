@@ -118,15 +118,20 @@ AddressSpace::InitRegisters()
     machine->WriteRegister(STACK_REG, numPages * PAGE_SIZE - 16);
     DEBUG('a', "Initializing stack register to %u\n",
           numPages * PAGE_SIZE - 16);
+
+    space->SaveState(); // No se si está bien, es innecesario si se llama a SaveState luego de InitRegisters
+                        // pero es necesario si se llama a RestoreState luego de un InitRegisters
 }
 
 /// On a context switch, save any machine state, specific to this address
 /// space, that needs saving.
-///
-/// For now, nothing!
 void
 AddressSpace::SaveState()
-{}
+{
+    for (unsigned i = 0; i < NUM_TOTAL_REGS; i++) {
+        currentThread->userRegisters[i] = machine->ReadRegister(i);
+    }
+}
 
 /// On a context switch, restore the machine state so that this address space
 /// can run.
@@ -135,6 +140,9 @@ AddressSpace::SaveState()
 void
 AddressSpace::RestoreState()
 {
+    for (unsigned i = 0; i < NUM_TOTAL_REGS; i++) {
+        machine->WriteRegister(i, currentThread->userRegisters[i]);
+    }
     machine->GetMMU()->pageTable     = pageTable;
     machine->GetMMU()->pageTableSize = numPages;
 }

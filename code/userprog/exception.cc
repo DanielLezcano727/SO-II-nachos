@@ -32,7 +32,7 @@
     #include "prog_test.cc"
     struct Arguments {
         char* filename;
-        int args;
+        char** args;
     };
 #endif
 
@@ -273,7 +273,6 @@ SyscallHandler(ExceptionType _et)
                     DEBUG('e', "Error: address to filename is null.\n");
                 }
 
-
                 char filename[FILE_NAME_MAX_LEN + 1];
                 if (!ReadStringFromUser(filenameAddr,
                                         filename, sizeof filename)) {
@@ -282,9 +281,9 @@ SyscallHandler(ExceptionType _et)
                 }
 
                 ASSERT(filename != nullptr);
-
-                Arguments threadArgs = {filename, argsAddr}
-                // Acá habría que guardar los registros antes del fork creo, ni idea como
+                char** savedArgs = SaveArgs(argsAddr);
+                Arguments threadArgs = {filename, savedArgs};
+                space->saveState();
                 int childPid = currentThread->Fork(StartProc, (void *) threadArgs);
                 machine->WriteRegister(2, childPid);
             #else
@@ -311,8 +310,9 @@ SyscallHandler(ExceptionType _et)
 void
 StartProc(arguments threadArgs)
 {
+    threadArgs = (Arguments) threadArgs;
     char* filename = threadArgs.filename;
-    int argsAddr = threadArgs.args
+    char** args = threadArgs.args;
     ASSERT(filename != nullptr);
 
     OpenFile *executable = fileSystem->Open(filename);
@@ -331,8 +331,7 @@ StartProc(arguments threadArgs)
 
     if (argsAddr != nullptr)
     {
-        // REVISAR ESTA PARTE PORQUE NI IDEA
-        unsigned argc = WriteArgs((char **)argsAddr);
+        unsigned argc = WriteArgs(args);
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);

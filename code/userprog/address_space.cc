@@ -128,7 +128,7 @@ AddressSpace::InitRegisters()
 void
 AddressSpace::SaveState()
 {
-    for (unsigned i = 0; i < NUM_TOTAL_REGS; i++) {
+    for (unsigned i = 0; i < NUM_TOTAL_REGS; i++) { // Por lo que leí en thread.cc esto guarda los registros de usuario, no los de kernel
         currentThread->userRegisters[i] = machine->ReadRegister(i);
     }
 }

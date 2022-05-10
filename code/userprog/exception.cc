@@ -285,7 +285,8 @@ SyscallHandler(ExceptionType _et)
                 Arguments threadArgs; // Debería ser puntero?
                 threadArgs.filename = filename;
                 threadArgs.args = savedArgs;
-                space->saveState();
+                space->saveState(); // Revisar en thread.cc existe una funcion que hace lo mismo, pero menciona que hay 2 sets de registros de CPU los cuales guardar
+                // currentThread->SaveUserState();
                 int childPid = currentThread->Fork(StartProc, (void *) threadArgs);
                 machine->WriteRegister(2, childPid);
             #else

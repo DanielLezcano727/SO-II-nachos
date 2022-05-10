@@ -282,7 +282,9 @@ SyscallHandler(ExceptionType _et)
 
                 ASSERT(filename != nullptr);
                 char** savedArgs = SaveArgs(argsAddr);
-                Arguments threadArgs = {filename, savedArgs};
+                Arguments threadArgs; // Debería ser puntero?
+                threadArgs.filename = filename;
+                threadArgs.args = savedArgs;
                 space->saveState();
                 int childPid = currentThread->Fork(StartProc, (void *) threadArgs);
                 machine->WriteRegister(2, childPid);
@@ -335,7 +337,7 @@ StartProc(arguments threadArgs)
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
-        machine->WriteRegister(STACK_REG, sp - 24);
+        machine->WriteRegister(STACK_REG, sp - 24); // Revisar si esta es la manera correcta de restar 24 como indica args.hh
     }
 
     machine->Run();  // Jump to the user progam.

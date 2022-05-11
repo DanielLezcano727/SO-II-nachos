@@ -173,6 +173,7 @@ public:
 
     // User code this thread is running.
     AddressSpace *space;
+    SpaceId sid;
 #endif
 };
 

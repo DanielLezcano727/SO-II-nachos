@@ -52,8 +52,8 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     space    = nullptr;
     sid = threadTable->Add(this);
     fileTable = new Table<OpenFile*>;
-    fileTable->Add(nullptr); //< CONSOLE_INPUT
-    fileTable->Add(nullptr); //< CONSOLE_OUTPUT
+    fileTable->Add(nullptr); // CONSOLE_INPUT
+    fileTable->Add(nullptr); // CONSOLE_OUTPUT
 #endif
 }
 
@@ -98,11 +98,11 @@ Thread::~Thread()
 /// * `func` is the procedure to run concurrently.
 /// * `arg` is a single argument to be passed to the procedure.
 void
-Thread::Fork(VoidFunctionPtr func, void *arg, bool joinable=false)
+Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     ASSERT(func != nullptr);
     this->parent = currentThread;
-    join = joinable;
+
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);
 

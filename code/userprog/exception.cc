@@ -159,7 +159,7 @@ SyscallHandler(ExceptionType _et)
 
         case SC_WRITE: {
             DEBUG('e', "`Write` requested\n");
-            char* stringAddr = machine->ReadRegister(4);
+            int stringAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
@@ -173,7 +173,7 @@ SyscallHandler(ExceptionType _et)
             else {
                 char str[size];
 
-                ReadBufferFromUser(stringAddr, str, size); // Conflicto entre char* e int en 1er argumento
+                ReadBufferFromUser(stringAddr, str, size);
 
                 if (id == CONSOLE_OUTPUT) {
                     for (int i = 0; i < size; i++) {
@@ -192,7 +192,7 @@ SyscallHandler(ExceptionType _et)
 
         case SC_READ: {
             DEBUG('e', "`Read` requested\n");
-            char* usrAddr = machine->ReadRegister(4);
+            int usrAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
@@ -217,7 +217,7 @@ SyscallHandler(ExceptionType _et)
                     DEBUG('e', "Error: no file with that id");
                 }
 
-                WriteStringToUser(str, usrAddr); // Conflicto entre char* e int en 2do argumento
+                WriteStringToUser(str, usrAddr);
             }
             
             machine->WriteRegister(2, i);
@@ -261,25 +261,18 @@ SyscallHandler(ExceptionType _et)
 
         case SC_JOIN: {
             DEBUG('e', "`Join` requested\n");
-            // Toma un spaceid
-            currentThread->Join();
-
             SpaceId id = machine->ReadRegister(4);
-            if (!activeThreads->HasKey(id))
-            {
-                DEBUG('e', "Thread does not exists\n");
-                machine->WriteRegister(2, -1);
-            }
-            else
-            {
-                DEBUG('e', "Started to join thread: %d\n", id);
-                Thread *hilo = activeThreads->Get(id);
-                int status = hilo->Join();
-                DEBUG('e', "Thread joined\n");
-                machine->WriteRegister(2, status);
-            }
-            break;
 
+            if (!threadTable->HasKey(id)) {
+                DEBUG('e', "No thread with such key\n");
+                machine->WriteRegister(2, -1);
+            }else {
+                DEBUG('e', "Started to join thread: %d\n", id);
+                // Thread *hilo = threadTable->Get(id);
+                // int status = hilo->Join();
+                // DEBUG('e', "Thread joined\n");
+                machine->WriteRegister(2, 0);
+            }
             break;
         }
 
@@ -295,10 +288,10 @@ SyscallHandler(ExceptionType _et)
                 Arguments* threadArgs = new Arguments();
                 threadArgs->filename = filename;
                 threadArgs->args = savedArgs;
-                currentThread->SaveUserState();
-                // Debería retornar un spaceid
-                int childPid = currentThread->Fork(StartProc, (void *) threadArgs, joinable);
-                machine->WriteRegister(2, childPid);
+                currentThread->SaveUserState(); // No sabemos si hay que guardar los registros de kernel tambien
+                Thread* userThread = new Thread(filename, joinable);
+                userThread->Fork(StartProc, (void *) threadArgs);
+                machine->WriteRegister(2, userThread->sid);
             #else
                 DEBUG('e',"Multiprogramming is not defined\n");
                 machine->WriteRegister(2, -1);

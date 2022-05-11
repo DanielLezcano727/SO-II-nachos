@@ -237,7 +237,7 @@ Initialize(int argc, char **argv)
     Debugger *d = debugUserProg ? new Debugger : nullptr;
     machine = new Machine(d);  // This must come first.
     SetExceptionHandlers();
-    synchConsole = new SynchConsole(stdin, stdout); // es necesario?
+    synchConsole = new SynchConsole(); // es necesario?
     threadTable = new Table<Thread *>();
 #endif
 

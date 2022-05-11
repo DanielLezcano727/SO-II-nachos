@@ -71,6 +71,20 @@ DefaultHandler(ExceptionType et)
     ASSERT(false);
 }
 
+char *readFilename(int filenameAddr) {
+    if (filenameAddr == 0) {
+        DEBUG('e', "Error: address to filename string is null.\n");
+    }
+
+    char *filename = new char[FILE_NAME_MAX_LEN + 1];
+    if (!ReadStringFromUser(filenameAddr,
+                            filename, sizeof filename)) {
+        DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                FILE_NAME_MAX_LEN);
+    }
+    return filename;
+}
+
 /// Handle a system call exception.
 ///
 /// * `et` is the kind of exception.  The list of possible exceptions is in
@@ -101,22 +115,15 @@ SyscallHandler(ExceptionType _et)
 
         case SC_CREATE: {
             DEBUG('e', "`Create` requested\n");
-            int filenameAddr = machine->ReadRegister(4);
-            if (filenameAddr == 0) {
-                DEBUG('e', "Error: address to filename string is null.\n");
-            }
-
-            char filename[FILE_NAME_MAX_LEN + 1];
-            if (!ReadStringFromUser(filenameAddr,
-                                    filename, sizeof filename)) {
-                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
-                      FILE_NAME_MAX_LEN);
-            }
+            char *filename = readFilename(machine->ReadRegister(4));
 
             if (!fileSystem->Create(filename, FILE_SIZE)) {
                 DEBUG('e', "Error: couldn't create");
+                machine->WriteRegister(2, 1);
+            } else {
+                DEBUG('e', "`Create` done for file `%s`.\n", filename);
+                machine->WriteRegister(2, 0);
             }
-            DEBUG('e', "`Create` done for file `%s`.\n", filename);
 
             break;
         }
@@ -124,27 +131,23 @@ SyscallHandler(ExceptionType _et)
         case SC_REMOVE: {
             DEBUG('e', "`Create` requested\n");
 
-            int filenameAddr = machine->ReadRegister(4);
-            if (filenameAddr == 0) {
-                DEBUG('e', "Error: address to filename string is null.\n");
-            }
-
-            char filename[FILE_NAME_MAX_LEN + 1];
-            if (!ReadStringFromUser(filenameAddr,
-                                    filename, sizeof filename)) {
-                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
-                      FILE_NAME_MAX_LEN);
-            }
+            char *filename = readFilename(machine->ReadRegister(4));
 
             if (!fileSystem->Remove(filename)) {
                 DEBUG('e', "Error: couldn't remove, file doesn't exist");
+                machine->WriteRegister(2, 1);
+            } else {
+                DEBUG('e', "`Remove` done for file `%s`.\n", filename);
+                machine->WriteRegister(2, 0);
             }
 
-            DEBUG('e', "`Create` done for file `%s`.\n", filename);
             break;
         }
 
         case SC_EXIT: {
+            int status = machine->ReadRegister(4);
+
+            // Chequear como pasar status (y que hacer con eso)
             currentThread->Finish();
 
             break;

@@ -39,7 +39,7 @@ public:
 
     // Print contents of ready list.
     void Print();
-
+    
     int GetPriority(Thread *thread);
 
     void TopPriority(Thread *thread);

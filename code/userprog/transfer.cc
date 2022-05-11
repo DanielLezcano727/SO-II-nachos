@@ -11,7 +11,19 @@
 void ReadBufferFromUser(int userAddress, char *outBuffer,
                         unsigned byteCount)
 {
-    // TODO: implement.
+    ASSERT(userAddress != 0);
+    ASSERT(outBuffer != nullptr);
+    ASSERT(byteCount != 0);
+    // ASSERT(sizeof(outBuffer) >= byteCount);
+
+    unsigned count = 0;
+    do {
+        int temp;
+        count++;
+        ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        *outBuffer = (unsigned char) temp;
+        outBuffer++;
+    } while (count < byteCount);
 }
 
 bool ReadStringFromUser(int userAddress, char *outString,
@@ -35,10 +47,25 @@ bool ReadStringFromUser(int userAddress, char *outString,
 void WriteBufferToUser(const char *buffer, int userAddress,
                        unsigned byteCount)
 {
-    // TODO: implement.
+    ASSERT(userAddress != 0);
+    ASSERT(buffer != nullptr);
+    ASSERT(byteCount != 0);
+    // ASSERT(sizeof (buffer) / sizeof (char) >= byteCount); Ver si esto funciona bien
+
+    for (unsigned count = 0; count < byteCount; count++)
+        ASSERT(machine->WriteMem(userAddress++, 1, (int)buffer[count]));
+
 }
 
 void WriteStringToUser(const char *string, int userAddress)
 {
-    // TODO: implement.
+    ASSERT(userAddress != 0);
+    ASSERT(string != nullptr);
+    // ASSERT(sizeof (buffer) / sizeof (char) >= byteCount); Ver si esto funciona bien
+
+    unsigned count = 0;
+
+    do {
+        ASSERT(machine->WriteMem(userAddress++, 1, string[count]));
+    } while (string[count] != '\0');
 }

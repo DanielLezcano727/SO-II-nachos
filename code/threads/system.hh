@@ -12,6 +12,7 @@
 #include "thread.hh"
 #include "scheduler.hh"
 #include "lib/utility.hh"
+#include "lib/bitmap.hh"
 #include "machine/interrupt.hh"
 #include "machine/statistics.hh"
 #include "machine/timer.hh"
@@ -32,10 +33,13 @@ extern Scheduler *scheduler;         ///< The ready list.
 extern Interrupt *interrupt;         ///< Interrupt status.
 extern Statistics *stats;            ///< Performance metrics.
 extern Timer *timer;                 ///< The hardware alarm clock.
+extern Bitmap *pages;
 
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
+#include "synch_console.hh"
 extern Machine *machine;  // User program memory and registers.
+extern SynchConsole *synchConsole;
 #endif
 
 #ifdef FILESYS_NEEDED  // *FILESYS* or *FILESYS_STUB*.

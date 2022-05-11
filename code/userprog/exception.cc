@@ -116,7 +116,7 @@ SyscallHandler(ExceptionType _et)
         case SC_CREATE: {
             DEBUG('e', "`Create` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
-
+            
             if (!fileSystem->Create(filename, FILE_SIZE)) {
                 DEBUG('e', "Error: couldn't create file");
                 machine->WriteRegister(2, 1);
@@ -124,13 +124,12 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "`Create` done for file `%s`.\n", filename);
                 machine->WriteRegister(2, 0);
             }
-
+            delete filename;
             break;
         }
 
         case SC_REMOVE: {
             DEBUG('e', "`Remove` requested\n");
-
             char *filename = readFilename(machine->ReadRegister(4));
 
             if (!fileSystem->Remove(filename)) {
@@ -140,7 +139,7 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "`Remove` done for file `%s`.\n", filename);
                 machine->WriteRegister(2, 0);
             }
-
+            delete filename;
             break;
         }
 
@@ -153,7 +152,7 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "Abnormal exit\n");
             }
 
-            // Chequear como pasar status (y que hacer con eso)
+            // Habría que pasar el status al Finish y en Finish a Join, pero Join no está bien
             currentThread->Finish();
             break;
         }
@@ -233,8 +232,8 @@ SyscallHandler(ExceptionType _et)
             if (fid < 0)
                 DEBUG('e',"Invalid file id");
             else if (currentThread->fileTable->HasKey(fid)) {
-                OpenFile* item = currentThread->fileTable->Get(fid);
-                currentThread->fileTable->Remove(item);
+                OpenFile* item = currentThread->fileTable->Remove(fid);
+                delete item;
                 status = 0;
             }else {
                 DEBUG('e', "No file with such id\n");
@@ -252,6 +251,7 @@ SyscallHandler(ExceptionType _et)
                 OpenFileId opfid = currentThread->fileTable->Add(fid);
                 DEBUG('e', "`Open` requested for opfid %u.\n", opfid);
             }else {
+                DEBUG('e', "Couldn't open file.\n");
                 opfid = -1;
             }
 
@@ -263,6 +263,23 @@ SyscallHandler(ExceptionType _et)
             DEBUG('e', "`Join` requested\n");
             // Toma un spaceid
             currentThread->Join();
+
+            SpaceId id = machine->ReadRegister(4);
+            if (!activeThreads->HasKey(id))
+            {
+                DEBUG('e', "Thread does not exists\n");
+                machine->WriteRegister(2, -1);
+            }
+            else
+            {
+                DEBUG('e', "Started to join thread: %d\n", id);
+                Thread *hilo = activeThreads->Get(id);
+                int status = hilo->Join();
+                DEBUG('e', "Thread joined\n");
+                machine->WriteRegister(2, status);
+            }
+            break;
+
             break;
         }
 

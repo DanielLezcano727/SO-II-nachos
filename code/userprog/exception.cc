@@ -24,17 +24,15 @@
 
 #include "transfer.hh"
 #include "syscall.h"
+#include "args.hh"
 #include "filesys/open_file.hh"
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
 
-#ifdef MULTIPROG
-    #include "prog_test.cc"
-    struct Arguments {
-        char* filename;
-        char** args;
-    };
-#endif
+struct Arguments {
+    char* filename;
+    char** args;
+};
 
 #include <stdio.h>
 
@@ -84,6 +82,43 @@ char *readFilename(int filenameAddr) {
     }
     return filename;
 }
+
+void
+StartProc(void *_threadArgs)
+{
+    Arguments *threadArgs = (Arguments*) _threadArgs;
+    char* filename = threadArgs->filename;
+    char** args = threadArgs->args;
+    ASSERT(filename != nullptr);
+
+    OpenFile *executable = fileSystem->Open(filename);
+    if (executable == nullptr) {
+        printf("Unable to open file %s\n", filename);
+        return;
+    }
+
+    AddressSpace *space = new AddressSpace(executable);
+    currentThread->space = space;
+
+    delete executable;
+
+    space->InitRegisters();  // Set the initial register values.
+    space->RestoreState();   // Load page table register.
+
+    if (args != nullptr)
+    {
+        unsigned argc = WriteArgs(args);
+        machine->WriteRegister(4, argc);
+        int sp = machine->ReadRegister(STACK_REG);
+        machine->WriteRegister(5, sp);
+        machine->WriteRegister(STACK_REG, sp - 24);
+    }
+    delete threadArgs;
+    machine->Run();  // Jump to the user progam.
+    ASSERT(false);   // `machine->Run` never returns; the address space
+                     // exits by doing the system call `Exit`.
+}
+
 
 /// Handle a system call exception.
 ///
@@ -163,7 +198,7 @@ SyscallHandler(ExceptionType _et)
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
-            int i = -1;
+            int res = -1;
             if (!stringAddr)
                 DEBUG('e', "Error: address to string is null.\n");
             else if (size < 0)
@@ -180,13 +215,13 @@ SyscallHandler(ExceptionType _et)
                         synchConsole->PutChar(str[i]);
                     }
                 }else if (currentThread->fileTable->HasKey(id)) {
-                    i = currentThread->fileTable->Get(id)->Write(str, size);
+                    res = currentThread->fileTable->Get(id)->Write(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
             }
 
-            machine->WriteRegister(2, i);
+            machine->WriteRegister(2, res);
             break;
         }
 
@@ -246,9 +281,10 @@ SyscallHandler(ExceptionType _et)
             DEBUG('e', "`Open` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
             OpenFile* fid = fileSystem->Open(filename);
+            OpenFileId opfid = -1;
 
             if (fid != nullptr) {
-                OpenFileId opfid = currentThread->fileTable->Add(fid);
+                opfid = currentThread->fileTable->Add(fid);
                 DEBUG('e', "`Open` requested for opfid %u.\n", opfid);
             }else {
                 DEBUG('e', "Couldn't open file.\n");
@@ -277,13 +313,12 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_EXEC: {
-            #ifdef MULTIPROG
-                DEBUG('e', "`Exec` requested\n");
-                char *filename = readFilename(machine->ReadRegister(4));
-                int argsAddr = machine->ReadRegister(5);
-                int joinable = machine->ReadRegister(6);
+            DEBUG('e', "`Exec` requested\n");
+            char *filename = readFilename(machine->ReadRegister(4));
+            int argsAddr = machine->ReadRegister(5);
+            int joinable = machine->ReadRegister(6);
 
-                ASSERT(filename != nullptr);
+            if(filename != nullptr) {
                 char** savedArgs = SaveArgs(argsAddr);
                 Arguments* threadArgs = new Arguments();
                 threadArgs->filename = filename;
@@ -292,10 +327,9 @@ SyscallHandler(ExceptionType _et)
                 Thread* userThread = new Thread(filename, joinable);
                 userThread->Fork(StartProc, (void *) threadArgs);
                 machine->WriteRegister(2, userThread->sid);
-            #else
-                DEBUG('e',"Multiprogramming is not defined\n");
+            } else {
                 machine->WriteRegister(2, -1);
-            #endif
+            }
             break;
         }
         
@@ -313,43 +347,6 @@ SyscallHandler(ExceptionType _et)
 
     IncrementPC();
 }
-
-void
-StartProc(void *threadArgs)
-{
-    threadArgs = (Arguments*) threadArgs;
-    char* filename = threadArgs->filename;
-    char** args = threadArgs->args;
-    ASSERT(filename != nullptr);
-
-    OpenFile *executable = fileSystem->Open(filename);
-    if (executable == nullptr) {
-        printf("Unable to open file %s\n", filename);
-        return;
-    }
-
-    AddressSpace *space = new AddressSpace(executable);
-    currentThread->space = space;
-
-    delete executable;
-
-    space->InitRegisters();  // Set the initial register values.
-    space->RestoreState();   // Load page table register.
-
-    if (argsAddr != nullptr)
-    {
-        unsigned argc = WriteArgs(args);
-        machine->WriteRegister(4, argc);
-        int sp = machine->ReadRegister(STACK_REG);
-        machine->WriteRegister(5, sp);
-        machine->WriteRegister(STACK_REG, sp - 24);
-    }
-    delete threadArgs;
-    machine->Run();  // Jump to the user progam.
-    ASSERT(false);   // `machine->Run` never returns; the address space
-                     // exits by doing the system call `Exit`.
-}
-
 
 /// By default, only system calls have their own handler.  All other
 /// exception types are assigned the default handler.

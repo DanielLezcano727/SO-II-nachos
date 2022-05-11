@@ -29,6 +29,7 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
       // We need to increase the size to leave room for the stack.
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
+    DEBUG('t', "%d, %d\n", numPages, pages->CountClear());
 
     ASSERT(numPages <= pages->CountClear());
 

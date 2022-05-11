@@ -46,6 +46,7 @@
 #include "filesys/open_file.hh"
 #include "machine/machine.hh"
 #include "userprog/address_space.hh"
+#include "userprog/syscall.h"
 #endif
 
 #include <stdint.h>
@@ -158,12 +159,9 @@ private:
     /// registers -- one for its state while executing user code, one for its
     /// state while executing kernel code.
     int userRegisters[NUM_TOTAL_REGS];
-    Table<OpenFile*> *fileTable;
     
 public:
-    bool AddFile(OpenFile *fid);
-    
-    bool RemFile(OpenFile *fid);
+    Table<OpenFile*> *fileTable;
 
     // Save user-level register state.
     void SaveUserState();

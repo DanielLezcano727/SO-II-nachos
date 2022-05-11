@@ -118,7 +118,7 @@ SyscallHandler(ExceptionType _et)
             char *filename = readFilename(machine->ReadRegister(4));
 
             if (!fileSystem->Create(filename, FILE_SIZE)) {
-                DEBUG('e', "Error: couldn't create");
+                DEBUG('e', "Error: couldn't create file");
                 machine->WriteRegister(2, 1);
             } else {
                 DEBUG('e', "`Create` done for file `%s`.\n", filename);
@@ -129,7 +129,7 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_REMOVE: {
-            DEBUG('e', "`Create` requested\n");
+            DEBUG('e', "`Remove` requested\n");
 
             char *filename = readFilename(machine->ReadRegister(4));
 
@@ -145,19 +145,26 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_EXIT: {
+            DEBUG('e', "`Exit` requested\n");
             int status = machine->ReadRegister(4);
+            if (status == 0) {
+                DEBUG('e', "Exited normally\n");
+            }else {
+                DEBUG('e', "Abnormal exit\n");
+            }
 
             // Chequear como pasar status (y que hacer con eso)
             currentThread->Finish();
-
             break;
         }
 
         case SC_WRITE: {
-            int stringAddr = machine->ReadRegister(4);
+            DEBUG('e', "`Write` requested\n");
+            char* stringAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
+            int i = -1;
             if (!stringAddr)
                 DEBUG('e', "Error: address to string is null.\n");
             else if (size < 0)
@@ -167,24 +174,26 @@ SyscallHandler(ExceptionType _et)
             else {
                 char str[size];
 
-                ReadBufferFromUser(stringAddr, str, size);
+                ReadBufferFromUser(stringAddr, str, size); // Conflicto entre char* e int en 1er argumento
 
                 if (id == CONSOLE_OUTPUT) {
                     for (int i = 0; i < size; i++) {
                         synchConsole->PutChar(str[i]);
                     }
                 }else if (currentThread->fileTable->HasKey(id)) {
-                    currentThread->fileTable->Get(id)->Write(str, size);
+                    i = currentThread->fileTable->Get(id)->Write(str, size);
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
             }
 
+            machine->WriteRegister(2, i);
             break;
         }
 
         case SC_READ: {
-            int usrAddr = machine->ReadRegister(4);
+            DEBUG('e', "`Read` requested\n");
+            char* usrAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
 
@@ -209,7 +218,7 @@ SyscallHandler(ExceptionType _et)
                     DEBUG('e', "Error: no file with that id");
                 }
 
-                WriteStringToUser(str, usrAddr);
+                WriteStringToUser(str, usrAddr); // Conflicto entre char* e int en 2do argumento
             }
             
             machine->WriteRegister(2, i);
@@ -217,64 +226,52 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_CLOSE: {
-            int fid = machine->ReadRegister(4);
+            DEBUG('e', "`Close` requested\n");
+            OpenFileId fid = machine->ReadRegister(4);
+            int status = -1;
 
             if (fid < 0)
                 DEBUG('e',"Invalid file id");
             else if (currentThread->fileTable->HasKey(fid)) {
                 OpenFile* item = currentThread->fileTable->Get(fid);
                 currentThread->fileTable->Remove(item);
+                status = 0;
             }else {
-                DEBUG('e', "Error: file descriptor not opened.\n");
+                DEBUG('e', "No file with such id\n");
             }
+            machine->WriteRegister(2, status);
             break;
         }
 
         case SC_OPEN: {
-            int filenameAddr = machine->ReadRegister(4);
-            if (filenameAddr == 0) {
-                DEBUG('e', "Error: address to filename is null.\n");
-            }
-
-            char filename[FILE_NAME_MAX_LEN + 1];
-            if (!ReadStringFromUser(filenameAddr,
-                                    filename, sizeof filename)) {
-                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
-                      FILE_NAME_MAX_LEN);
-            }
-
+            DEBUG('e', "`Open` requested\n");
+            char *filename = readFilename(machine->ReadRegister(4));
             OpenFile* fid = fileSystem->Open(filename);
+
             if (fid != nullptr) {
-                int id = currentThread->fileTable->Add(fid);
-                DEBUG('e', "`Open` requested for id %u.\n", id);
+                OpenFileId opfid = currentThread->fileTable->Add(fid);
+                DEBUG('e', "`Open` requested for opfid %u.\n", opfid);
             }else {
-                fid = -1;
+                opfid = -1;
             }
 
-            machine->WriteRegister(2, id);
+            machine->WriteRegister(2, opfid);
             break;
         }
 
         case SC_JOIN: {
+            DEBUG('e', "`Join` requested\n");
+            // Toma un spaceid
             currentThread->Join();
             break;
         }
 
         case SC_EXEC: {
             #ifdef MULTIPROG
-                int filenameAddr = machine->ReadRegister(4);
+                DEBUG('e', "`Exec` requested\n");
+                char *filename = readFilename(machine->ReadRegister(4));
                 int argsAddr = machine->ReadRegister(5);
                 int joinable = machine->ReadRegister(6);
-                if (filenameAddr == 0) {
-                    DEBUG('e', "Error: address to filename is null.\n");
-                }
-
-                char filename[FILE_NAME_MAX_LEN + 1];
-                if (!ReadStringFromUser(filenameAddr,
-                                        filename, sizeof filename)) {
-                    DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
-                        FILE_NAME_MAX_LEN);
-                }
 
                 ASSERT(filename != nullptr);
                 char** savedArgs = SaveArgs(argsAddr);
@@ -282,6 +279,7 @@ SyscallHandler(ExceptionType _et)
                 threadArgs->filename = filename;
                 threadArgs->args = savedArgs;
                 currentThread->SaveUserState();
+                // Debería retornar un spaceid
                 int childPid = currentThread->Fork(StartProc, (void *) threadArgs, joinable);
                 machine->WriteRegister(2, childPid);
             #else
@@ -292,6 +290,7 @@ SyscallHandler(ExceptionType _et)
         }
         
         case SC_PS: {
+            DEBUG('e', "`Print Scheduler` requested\n");
             scheduler->Print();
             break;
         }

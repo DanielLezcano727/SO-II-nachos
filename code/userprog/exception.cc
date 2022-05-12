@@ -187,7 +187,8 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "Abnormal exit\n");
             }
 
-            // Habría que pasar el status al Finish y en Finish a Join, pero Join no está bien
+            // EXIT pide pasar el estado segun syscall.h pero nuestra implementación de join no recibe dicho estado
+            // probablemente está mal pero no tenemos la corrección del mismo.
             currentThread->Finish();
             break;
         }
@@ -304,9 +305,10 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, -1);
             }else {
                 DEBUG('e', "Started to join thread: %d\n", id);
-                // Thread *hilo = threadTable->Get(id);
-                // int status = hilo->Join();
-                // DEBUG('e', "Thread joined\n");
+                // Creemos que nuestro join está mal pero a día de esta entrega no tenemos la devolución de la
+                // práctica 2 por lo que sólo dejamos planteada la idea.
+                // Thread *t = threadTable->Get(id);
+                // machine->WriteRegister(2, t->Join(););
                 machine->WriteRegister(2, 0);
             }
             break;

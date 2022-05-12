@@ -21,14 +21,6 @@ main(int argc, char *argv[])
         puts2(line);
     }
     puts2("\n");
-    // do {
-    //     size = Read(line, MAX_LINE, file);
-    //     if (size > 0) {
-    //         // Write(line, size, CONSOLE_OUTPUT);
-    //         puts(line);
-    //     }
-    // } while (size > 0);
-    // Write('\n', 1, CONSOLE_OUTPUT);
 
     Close(file);
 

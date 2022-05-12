@@ -231,28 +231,28 @@ SyscallHandler(ExceptionType _et)
             int usrAddr = machine->ReadRegister(4);
             int size = machine->ReadRegister(5);
             OpenFileId id = machine->ReadRegister(6);
-
             int i = -1;
             if (!usrAddr)
                 DEBUG('e', "Error: address to usr is null.\n");
             else if (size < 0)
                 DEBUG('e', "Error: invalid size.\n");
-            else if (id <= CONSOLE_OUTPUT)
+            else if (id == CONSOLE_OUTPUT)
                 DEBUG('e', "Error: invalid file descriptor.\n");
             else {
-                char str[size];
+                char str[size+1];
 
                 if (id == CONSOLE_INPUT) {
-                    for(i = 0; i < size - 1; i++) {
+                    for(i = 0; i < size; i++) {
                         str[i] = synchConsole->GetChar();
                     }
                     str[i] = '\0';
                 }else if (currentThread->fileTable->HasKey(id)) {
                     i = currentThread->fileTable->Get(id)->Read(str, size);
+                    str[i] = '\0';
                 }else {
                     DEBUG('e', "Error: no file with that id");
                 }
-
+                
                 WriteStringToUser(str, usrAddr);
             }
             

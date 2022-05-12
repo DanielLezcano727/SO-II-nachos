@@ -99,7 +99,6 @@ StartProc(void *_threadArgs)
 
     AddressSpace *space = new AddressSpace(executable);
     currentThread->space = space;
-
     delete executable;
 
     space->InitRegisters();  // Set the initial register values.
@@ -107,7 +106,7 @@ StartProc(void *_threadArgs)
 
     if (args != nullptr)
     {
-        unsigned argc = WriteArgs(args);
+        unsigned argc = WriteArgs(args); // Tira error acá al intentar escribir estos argumentos al hijo
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
@@ -305,10 +304,10 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, -1);
             }else {
                 DEBUG('e', "Started to join thread: %d\n", id);
-                // Creemos que nuestro join está mal pero a día de esta entrega no tenemos la devolución de la
-                // práctica 2 por lo que sólo dejamos planteada la idea.
+                // Creemos que nuestra implementacion de join está mal pero a día de esta entrega no tenemos 
+                // la devolución de la práctica 2 por lo que sólo dejamos planteada la idea.
                 // Thread *t = threadTable->Get(id);
-                // machine->WriteRegister(2, t->Join(););
+                // machine->WriteRegister(2, t->Join());
                 machine->WriteRegister(2, 0);
             }
             break;

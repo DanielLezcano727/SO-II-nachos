@@ -84,40 +84,23 @@ char *readFilename(int filenameAddr) {
 }
 
 void
-StartProc(void *_threadArgs)
+StartProc(void *args)
 {
-    Arguments *threadArgs = (Arguments*) _threadArgs;
-    char* filename = threadArgs->filename;
-    char** args = threadArgs->args;
-    ASSERT(filename != nullptr);
-
-    OpenFile *executable = fileSystem->Open(filename);
-    if (executable == nullptr) {
-        printf("Unable to open file %s\n", filename);
-        return;
-    }
-
-    AddressSpace *space = new AddressSpace(executable);
-    currentThread->space = space;
-    delete executable;
-
-    space->InitRegisters();  // Set the initial register values.
-    space->RestoreState();   // Load page table register.
+    currentThread->space->InitRegisters();  // Set the initial register values.
+    currentThread->space->RestoreState();   // Load page table register.
 
     if (args != nullptr)
     {
-        unsigned argc = WriteArgs(args); // Tira error acá al intentar escribir estos argumentos al hijo
+        unsigned argc = WriteArgs((char**)args); // Tira error acá al intentar escribir estos argumentos al hijo
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
         machine->WriteRegister(STACK_REG, sp - 24);
     }
-    delete threadArgs;
     machine->Run();  // Jump to the user progam.
     ASSERT(false);   // `machine->Run` never returns; the address space
                      // exits by doing the system call `Exit`.
 }
-
 
 /// Handle a system call exception.
 ///
@@ -314,6 +297,9 @@ SyscallHandler(ExceptionType _et)
         }
 
         case SC_EXEC: {
+            // Estamos al tanto de un error en exec en el que programas de usuario que requieren argumentos
+            // no se ejecutan debido a un error de free():invalid pointer, no llegamos a ubicar el origen de
+            // dicho error.
             DEBUG('e', "`Exec` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
             int argsAddr = machine->ReadRegister(5);
@@ -321,13 +307,18 @@ SyscallHandler(ExceptionType _et)
 
             if(filename != nullptr) {
                 char** savedArgs = SaveArgs(argsAddr);
-                Arguments* threadArgs = new Arguments();
-                threadArgs->filename = filename;
-                threadArgs->args = savedArgs;
                 currentThread->SaveUserState(); // No sabemos si hay que guardar los registros de kernel tambien
                 Thread* userThread = new Thread(filename, joinable);
-                userThread->Fork(StartProc, (void *) threadArgs);
+                
+                OpenFile *executable = fileSystem->Open(filename);
+                if (executable == nullptr) {
+                    printf("Unable to open file %s\n", filename);
+                }
+                userThread->space = new AddressSpace(executable);
+
+                userThread->Fork(StartProc, (void *) savedArgs);
                 machine->WriteRegister(2, userThread->sid);
+                delete executable;
             } else {
                 machine->WriteRegister(2, -1);
             }

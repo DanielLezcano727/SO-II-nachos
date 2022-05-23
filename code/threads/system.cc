@@ -8,6 +8,7 @@
 
 #include "system.hh"
 #include "preemptive.hh"
+#include "lib/bitmap.hh"
 
 #ifdef USER_PROGRAM
 #include "userprog/debugger.hh"
@@ -30,13 +31,11 @@ Interrupt *interrupt;         ///< Interrupt status.
 Statistics *stats;            ///< Performance metrics.
 Timer *timer;                 ///< The hardware timer device, for invoking
                               ///< context switches.
-Bitmap *pages;      
-#define NUM_VIRTUAL_PAGES 4                      
+#define NUM_VIRTUAL_PAGES 100                      
 
 // 2007, Jose Miguel Santos Espino
 PreemptiveScheduler *preemptiveScheduler = nullptr;
 const long long DEFAULT_TIME_SLICE = 50000;
-int userRegisters[NUM_TOTAL_REGS];
 
 #ifdef FILESYS_NEEDED
 FileSystem *fileSystem;
@@ -47,6 +46,7 @@ SynchDisk *synchDisk;
 #endif
 
 #ifdef USER_PROGRAM  // Requires either *FILESYS* or *FILESYS_STUB*.
+Bitmap *pages;      
 Machine *machine;  ///< User program memory and registers.
 SynchConsole *synchConsole;
 Table <Thread *> *threadTable;
@@ -140,9 +140,10 @@ Initialize(int argc, char **argv)
     bool preemptiveScheduling = false;
     long long timeSlice;
 
-    pages = new Bitmap(NUM_VIRTUAL_PAGES);
 
 #ifdef USER_PROGRAM
+    threadTable = new Table<Thread *>();
+    pages = new Bitmap(NUM_VIRTUAL_PAGES);
     bool debugUserProg = false;  // Single step user program.
 #endif
 #ifdef FILESYS_NEEDED
@@ -237,8 +238,7 @@ Initialize(int argc, char **argv)
     Debugger *d = debugUserProg ? new Debugger : nullptr;
     machine = new Machine(d);  // This must come first.
     SetExceptionHandlers();
-    synchConsole = new SynchConsole(stdin, stdout); // es necesario?
-    threadTable = new Table<Thread *>();
+    synchConsole = new SynchConsole();
 #endif
 
 #ifdef FILESYS
@@ -262,13 +262,13 @@ Cleanup()
 
     // 2007, Jose Miguel Santos Espino
     delete preemptiveScheduler;
-    delete pages;
 
 #ifdef NETWORK
     delete postOffice;
 #endif
 
 #ifdef USER_PROGRAM
+    delete pages;
     delete machine;
     delete synchConsole;
     delete threadTable;

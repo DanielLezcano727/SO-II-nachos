@@ -8,16 +8,24 @@
 /// procedure, but if you do this, you have to be careful to allocate a big
 /// enough stack to hold the automatics!
 
-
 #include "syscall.h"
-
 
 int
 main(void)
 {
-    Create("test.txt");
-    OpenFileId o = Open("test.txt");
-    Write("Hello world\n",12,o);
+    Create("tet.txt");
+    
+    OpenFileId o = Open("tet.txt");
+    Write("Hello world\n", 12, o);
     Close(o);
+
+    char buffer[10];
+    o = Open("tet.txt");
+    Read(buffer, 4, CONSOLE_INPUT);
+    Write(buffer, 4, CONSOLE_OUTPUT);
+    Close(o);
+
+    Remove("tet.txt");
+    // Halt();
     return 0;
 }

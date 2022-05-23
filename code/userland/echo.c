@@ -2,7 +2,6 @@
 
 #include "syscall.h"
 
-
 unsigned
 StringLength(const char *s)
 {

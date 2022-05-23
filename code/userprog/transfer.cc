@@ -61,11 +61,10 @@ void WriteStringToUser(const char *string, int userAddress)
 {
     ASSERT(userAddress != 0);
     ASSERT(string != nullptr);
-    // ASSERT(sizeof (buffer) / sizeof (char) >= byteCount); Ver si esto funciona bien
 
     unsigned count = 0;
 
     do {
-        ASSERT(machine->WriteMem(userAddress++, 1, string[count]));
+        ASSERT(machine->WriteMem(userAddress++, 1, string[count++]));
     } while (string[count] != '\0');
 }

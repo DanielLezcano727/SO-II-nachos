@@ -12,13 +12,13 @@ void RequestWriteDone(void *arg) {
     console->WriteDone();
 }
 
-SynchConsole::SynchConsole(const char *readFile, const char *writeFile) {
+SynchConsole::SynchConsole() {
 
     semaphore_read = new Semaphore("synch console", 0);
     semaphore_write = new Semaphore("synch console", 0);
     lock_read = new Lock("synch console lock");
     lock_write = new Lock("synch console lock");
-    console = new Console(readFile, writeFile, RequestReadDone, RequestWriteDone, this);
+    console = new Console(nullptr, nullptr, RequestReadDone, RequestWriteDone, this);
 }
 
 SynchConsole::~SynchConsole() {
@@ -38,8 +38,8 @@ void SynchConsole::PutChar(char ch) {
 
 char SynchConsole::GetChar() {
     lock_read->Acquire();
-    char ch = console->GetChar();
     semaphore_read->P();
+    char ch = console->GetChar();
     lock_read->Release();
     return ch;
 }

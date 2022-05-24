@@ -120,7 +120,7 @@ public:
     void Sleep();
 
     /// The thread is done executing.
-    void Finish();
+    void Finish(int status=0);
 
     /// Check if thread has overflowed its stack.
     void CheckOverflow() const;
@@ -146,7 +146,7 @@ private:
 
     const char *name;
     bool join;
-    bool alive;
+    void *channelJoin;    
     Thread *parent;
 
     /// Allocate a stack for thread.  Used internally by `Fork`.

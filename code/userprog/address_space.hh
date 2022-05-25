@@ -47,6 +47,7 @@ public:
     void SaveState();
     void RestoreState();
 
+    TranslationEntry GetEntry(int vPage);
 private:
     unsigned int Translate(unsigned int virtualAddr);
     /// Assume linear page table translation for now!

@@ -9,6 +9,7 @@
 
 #include <string.h>
 
+#define TLB_TRIES 4
 
 static const unsigned MAX_ARG_COUNT  = 32;
 static const unsigned MAX_ARG_LENGTH = 128;
@@ -26,7 +27,8 @@ bool CountArgsToSave(int address, unsigned *count)
     int val;
     unsigned c = 0;
     do {
-        machine->ReadMem(address + 4 * c, 4, &val);
+        for(int j = 0; j <= TLB_TRIES; j++)
+            machine->ReadMem(address + 4 * c, 4, &val);
         c++;
     } while (c < MAX_ARG_COUNT && val != 0);
     if (c == MAX_ARG_COUNT && val != 0) {
@@ -60,7 +62,8 @@ SaveArgs(int address)
         args[i] = new char [MAX_ARG_LENGTH];
         int strAddr;
         // For each pointer, read the corresponding string.
-        machine->ReadMem(address + i * 4, 4, &strAddr);
+        for(int j = 0; j <= TLB_TRIES; j++)
+            machine->ReadMem(address + i * 4, 4, &strAddr);
         ReadStringFromUser(strAddr, args[i], MAX_ARG_LENGTH);
     }
     args[count] = nullptr;  // Write the trailing null.

@@ -7,6 +7,7 @@
 #include "lib/utility.hh"
 #include "threads/system.hh"
 
+#define TLB_TRIES 4
 
 void ReadBufferFromUser(int userAddress, char *outBuffer,
                         unsigned byteCount)
@@ -20,7 +21,8 @@ void ReadBufferFromUser(int userAddress, char *outBuffer,
     do {
         int temp;
         count++;
-        ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        for(int j = 0; j <= TLB_TRIES; j++)
+            machine->ReadMem(userAddress++, 1, &temp);
         *outBuffer = (unsigned char) temp;
         outBuffer++;
     } while (count < byteCount);
@@ -37,7 +39,8 @@ bool ReadStringFromUser(int userAddress, char *outString,
     do {
         int temp;
         count++;
-        ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        for(int j = 0; j <= TLB_TRIES; j++)
+            machine->ReadMem(userAddress++, 1, &temp);
         *outString = (unsigned char) temp;
     } while (*outString++ != '\0' && count < maxByteCount);
 

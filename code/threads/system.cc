@@ -31,7 +31,7 @@ Interrupt *interrupt;         ///< Interrupt status.
 Statistics *stats;            ///< Performance metrics.
 Timer *timer;                 ///< The hardware timer device, for invoking
                               ///< context switches.
-#define NUM_VIRTUAL_PAGES 100                      
+#define NUM_VIRTUAL_PAGES 100                    
 
 // 2007, Jose Miguel Santos Espino
 PreemptiveScheduler *preemptiveScheduler = nullptr;

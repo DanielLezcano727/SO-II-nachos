@@ -202,6 +202,7 @@ MMU::RetrievePageEntry(unsigned vpn, TranslationEntry **entry) const
                 *entry = e;  // FOUND!
                 return NO_EXCEPTION;
             }
+            // DEBUG('b', "Entry values: %s %d %d\n", e->valid, e->virtualPage, vpn);
         }
 
         // Not found.

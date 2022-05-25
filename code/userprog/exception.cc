@@ -91,7 +91,7 @@ StartProc(void *args)
 
     if (args != nullptr)
     {
-        unsigned argc = WriteArgs((char**)args); // Tira error acá al intentar escribir estos argumentos al hijo
+        unsigned argc = WriteArgs((char**)args);
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
@@ -168,10 +168,7 @@ SyscallHandler(ExceptionType _et)
             }else {
                 DEBUG('e', "Abnormal exit\n");
             }
-
-            // EXIT pide pasar el estado segun syscall.h pero nuestra implementación de join no recibe dicho estado
-            // probablemente está mal pero no tenemos la corrección del mismo.
-            currentThread->Finish();
+            currentThread->Finish(status);
             break;
         }
 
@@ -287,19 +284,14 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, -1);
             }else {
                 DEBUG('e', "Started to join thread: %d\n", id);
-                // Creemos que nuestra implementacion de join está mal pero a día de esta entrega no tenemos 
-                // la devolución de la práctica 2 por lo que sólo dejamos planteada la idea.
-                // Thread *t = threadTable->Get(id);
-                // machine->WriteRegister(2, t->Join());
+                Thread *t = threadTable->Get(id);
+                t->Join();
                 machine->WriteRegister(2, 0);
             }
             break;
         }
 
         case SC_EXEC: {
-            // Estamos al tanto de un error en exec en el que programas de usuario que requieren argumentos
-            // no se ejecutan debido a un error de free():invalid pointer, no llegamos a ubicar el origen de
-            // dicho error.
             DEBUG('e', "`Exec` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
             int argsAddr = machine->ReadRegister(5);
@@ -341,6 +333,30 @@ SyscallHandler(ExceptionType _et)
     IncrementPC();
 }
 
+#ifdef USE_TLB
+    long tlbOffset = 0; // Seguro hay un lugar mejor donde ponerlo                      
+
+    static void
+    PageFaultHandler(ExceptionType _et) {
+        DEBUG('b', "Page fault exception ocurred\n");
+        int vAddr = machine->ReadRegister(BAD_VADDR_REG);
+        int vPage = vAddr / PAGE_SIZE;
+        TranslationEntry entry = currentThread->space->GetEntry(vPage);
+        stats->numPageFaults++;
+        ASSERT(vPage >= 0);
+
+        machine->GetMMU()->tlb[tlbOffset++ % TLB_SIZE] = entry;
+    }
+
+    static void
+    ReadOnlyHandler(ExceptionType _et) {
+        DEBUG('b', "Read only exception ocurred\n");
+
+        // No se que debería hacer
+        ASSERT(false);
+        // currentThread->Finish();
+    }
+#endif
 /// By default, only system calls have their own handler.  All other
 /// exception types are assigned the default handler.
 void
@@ -348,8 +364,13 @@ SetExceptionHandlers()
 {
     machine->SetHandler(NO_EXCEPTION,            &DefaultHandler);
     machine->SetHandler(SYSCALL_EXCEPTION,       &SyscallHandler);
-    machine->SetHandler(PAGE_FAULT_EXCEPTION,    &DefaultHandler);
-    machine->SetHandler(READ_ONLY_EXCEPTION,     &DefaultHandler);
+    #ifdef USE_TLB
+        machine->SetHandler(PAGE_FAULT_EXCEPTION,    &PageFaultHandler);
+        machine->SetHandler(READ_ONLY_EXCEPTION,     &ReadOnlyHandler);
+    #else
+        machine->SetHandler(PAGE_FAULT_EXCEPTION,    &DefaultHandler);
+        machine->SetHandler(READ_ONLY_EXCEPTION,     &DefaultHandler);
+    #endif
     machine->SetHandler(BUS_ERROR_EXCEPTION,     &DefaultHandler);
     machine->SetHandler(ADDRESS_ERROR_EXCEPTION, &DefaultHandler);
     machine->SetHandler(OVERFLOW_EXCEPTION,      &DefaultHandler);

@@ -134,8 +134,13 @@ AddressSpace::SaveState()
 void
 AddressSpace::RestoreState()
 {
-    machine->GetMMU()->pageTable     = pageTable;
-    machine->GetMMU()->pageTableSize = numPages;
+    #ifdef USE_TLB
+        for (unsigned i = 0; i < TLB_SIZE; i++)
+            machine->GetMMU()->tlb[i].valid = false;
+    #else
+        machine->GetMMU()->pageTable     = pageTable;
+        machine->GetMMU()->pageTableSize = numPages;
+    #endif
 }
 
 unsigned int AddressSpace::Translate(unsigned int virtualAddr)
@@ -143,4 +148,9 @@ unsigned int AddressSpace::Translate(unsigned int virtualAddr)
   uint32_t page = virtualAddr / PAGE_SIZE;
   uint32_t offset = virtualAddr % PAGE_SIZE;
   return pageTable[page].physicalPage * PAGE_SIZE + offset;
+}
+
+TranslationEntry 
+AddressSpace::GetEntry(int vPage) {
+    return pageTable[vPage];
 }

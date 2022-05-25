@@ -312,13 +312,14 @@ SyscallHandler(ExceptionType _et)
                 
                 OpenFile *executable = fileSystem->Open(filename);
                 if (executable == nullptr) {
-                    printf("Unable to open file %s\n", filename);
+                    DEBUG('e', "Unable to open file %s\n", filename);
+                    machine->WriteRegister(2, -1);
+                } else {
+                    userThread->space = new AddressSpace(executable);
+                    userThread->Fork(StartProc, (void *) savedArgs);
+                    machine->WriteRegister(2, userThread->sid);
+                    delete executable;
                 }
-                userThread->space = new AddressSpace(executable);
-
-                userThread->Fork(StartProc, (void *) savedArgs);
-                machine->WriteRegister(2, userThread->sid);
-                delete executable;
             } else {
                 machine->WriteRegister(2, -1);
             }

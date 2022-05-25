@@ -20,6 +20,7 @@
 #include "thread.hh"
 #include "switch.h"
 #include "system.hh"
+#include "channel.hh"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -47,7 +48,9 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     stack    = nullptr;
     status   = JUST_CREATED;
     join     = callOnJoin;
-    alive = true;
+    if (join) {
+        channelJoin = new Channel("Channel");
+    }
 #ifdef USER_PROGRAM
     space    = nullptr;
     sid = threadTable->Add(this);
@@ -74,6 +77,10 @@ Thread::~Thread()
         SystemDep::DeallocBoundedArray((char *) stack,
                                        STACK_SIZE * sizeof *stack);
     }
+
+    // if (join) {
+    //     delete (Channel *)channelJoin;
+    // }
     #ifdef USER_PROGRAM
         delete space;
         delete fileTable;
@@ -159,9 +166,9 @@ Thread::Join()
 {
     ASSERT(join);
 
-    while (alive) {
-        currentThread->Yield();
-    }
+    int finishStatus;
+    Channel *channel = (Channel *)channelJoin;
+    channel->Receive(&finishStatus);
 }
 /// Called by `ThreadRoot` when a thread is done executing the forked
 /// procedure.
@@ -175,16 +182,19 @@ Thread::Join()
 /// NOTE: we disable interrupts, so that we do not get a time slice between
 /// setting `threadToBeDestroyed`, and going to sleep.
 void
-Thread::Finish()
+Thread::Finish(int finishStatus)
 {
     interrupt->SetLevel(INT_OFF);
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
 
-    threadToBeDestroyed = currentThread;
+    if (join) {
+        Channel *channel = (Channel *)channelJoin;
+        channel->Send(finishStatus);
+    }
 
-    alive = false;
+    threadToBeDestroyed = currentThread;
 
     Sleep();  // Invokes `SWITCH`.
     // Not reached.

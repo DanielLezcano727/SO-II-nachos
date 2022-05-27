@@ -1,3 +1,8 @@
+Bolzan Francisco
+Lezcano Daniel
+Plancha 4 - Ejercicio 2
+
+-----------------------------------------------
 Ejecutamos matmult con DIM = 50 y TLB_SIZE = 32
 Paging: faults 163122 hits 11888092
 
@@ -11,7 +16,6 @@ Ejecutamos matmult con DIM = 20 y TLB_SIZE = 64
 Paging: faults 47 hits 709352
 
 -----------------------------------------------
-
 Ejecutamos sort con DIM = 1024 y TLB_SIZE = 32
 Paging: faults 3069 hits 22080139
 

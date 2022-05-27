@@ -1,23 +1,23 @@
-Ejecutamos matmult con DIM =  y TLB_SIZE =
+Ejecutamos matmult con DIM = 50 y TLB_SIZE = 32
+Paging: faults 163122 hits 11888092
 
+Ejecutamos matmult con DIM = 50 y TLB_SIZE = 64
+Paging: faults 13883 hits 11757760
 
-Ejecutamos matmult con DIM =  y TLB_SIZE = 
+Ejecutamos matmult con DIM = 20 y TLB_SIZE = 32
+Paging: faults 110 hits 709405
 
+Ejecutamos matmult con DIM = 20 y TLB_SIZE = 64
+Paging: faults 47 hits 709352
 
-Ejecutamos matmult con DIM =  y TLB_SIZE =
+-----------------------------------------------
 
+Ejecutamos sort con DIM = 1024 y TLB_SIZE = 32
+Paging: faults 3069 hits 22080139
 
-Ejecutamos matmult con DIM =  y TLB_SIZE = 
+Ejecutamos sort con DIM = 1026 y TLB_SIZE = 64
+Paging: faults 39 hits 22077476
 
-
-Ejecutamos sort con DIM =  y TLB_SIZE =
-
-
-Ejecutamos sort con DIM =  y TLB_SIZE = 
-
-
-Ejecutamos sort con DIM =  y TLB_SIZE =
-
-
-Ejecutamos sort con DIM =  y TLB_SIZE = 
-
+-----------------------------------------------
+Conclusión: la mejora de 32 a 64 entradas para la TLB no es significativa, incluso para entradas significativamente mas grandes
+por esto nos quedamos con la TLB de tamaño 32.

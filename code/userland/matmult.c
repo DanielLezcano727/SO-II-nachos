@@ -40,5 +40,6 @@ main(void)
     }
 
     // And then we are done.
+    StatsPrint();
     return C[DIM - 1][DIM - 1];
 }

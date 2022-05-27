@@ -334,6 +334,12 @@ SyscallHandler(ExceptionType _et)
             break;
         }
 
+        case SC_SP: {
+            DEBUG('e', "Stats print requested\n");
+            stats->Print();
+            break;
+        }
+
         default:
             fprintf(stderr, "Unexpected system call: id %d.\n", scid);
             ASSERT(false);
@@ -349,6 +355,7 @@ SyscallHandler(ExceptionType _et)
         int vAddr = machine->ReadRegister(BAD_VADDR_REG);
         int vpn = vAddr / PAGE_SIZE;
         ASSERT(vpn >= 0);
+        stats->numPageFaults++;
         TranslationEntry e = currentThread->space->GetPage(vpn);
         
         tlbOffset %= TLB_SIZE;

@@ -32,6 +32,9 @@ bool CountArgsToSave(int address, unsigned *count)
             while (j > 0 && !machine->ReadMem(address + 4 * c, 4, &val))
                 j--;
             ASSERT(j != 0);
+            if (j < TLB_TRIES) {
+                stats->numPageHits--;
+            }
         #else
             machine->ReadMem(address + 4 * c, 4, &val);
         #endif
@@ -73,6 +76,9 @@ SaveArgs(int address)
             while (j > 0 && !machine->ReadMem(address + i * 4, 4, &strAddr))
                 j--;
             ASSERT(j != 0);
+            if (j < TLB_TRIES) {
+                stats->numPageHits--;
+            }
         #else
             machine->ReadMem(address + i * 4, 4, &strAddr);
         #endif
@@ -118,6 +124,9 @@ WriteArgs(char **args)
             while (j > 0 && !machine->WriteMem(sp + 4 * i, 4, argsAddress[i]))
                 j--;
             ASSERT(j != 0);
+            if (j < TLB_TRIES) {
+                stats->numPageHits--;
+            }
         #else
             machine->WriteMem(sp + 4 * i, 4, argsAddress[i]);
         #endif
@@ -127,6 +136,9 @@ WriteArgs(char **args)
         while (j > 0 && !machine->WriteMem(sp + 4 * c, 4, 0))
             j--;
         ASSERT(j != 0);
+        if (j < TLB_TRIES) {
+            stats->numPageHits--;
+        }
     #else
         machine->WriteMem(sp + 4 * c, 4, 0);  // The last is null.
     #endif

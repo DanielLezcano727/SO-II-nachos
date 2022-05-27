@@ -43,7 +43,7 @@ Statistics::Print()
     printf("Disk I/O: reads %lu, writes %lu\n", numDiskReads, numDiskWrites);
     printf("Console I/O: reads %lu, writes %lu\n",
            numConsoleCharsRead, numConsoleCharsWritten);
-    printf("Paging: faults %lu\n", numPageFaults);
+    printf("Paging: faults %lu hits %lu\n", numPageFaults, numPageHits);
     printf("Network I/O: packets received %lu, sent %lu\n",
            numPacketsRecvd, numPacketsSent);
 }

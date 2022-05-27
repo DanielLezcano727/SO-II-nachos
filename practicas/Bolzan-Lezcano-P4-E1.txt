@@ -1,0 +1,23 @@
+Ejecutamos matmult con DIM =  y TLB_SIZE =
+
+
+Ejecutamos matmult con DIM =  y TLB_SIZE = 
+
+
+Ejecutamos matmult con DIM =  y TLB_SIZE =
+
+
+Ejecutamos matmult con DIM =  y TLB_SIZE = 
+
+
+Ejecutamos sort con DIM =  y TLB_SIZE =
+
+
+Ejecutamos sort con DIM =  y TLB_SIZE = 
+
+
+Ejecutamos sort con DIM =  y TLB_SIZE =
+
+
+Ejecutamos sort con DIM =  y TLB_SIZE = 
+

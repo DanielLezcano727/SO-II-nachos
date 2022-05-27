@@ -28,6 +28,8 @@
 #include "filesys/open_file.hh"
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
+#include "machine/translation_entry.hh"
+#include "machine/mmu.hh"
 
 struct Arguments {
     char* filename;
@@ -340,7 +342,25 @@ SyscallHandler(ExceptionType _et)
 
     IncrementPC();
 }
+#ifdef USE_TLB
 
+    static long tlbOffset = 0;
+    static void PageFaultHandler(ExceptionType _et) {
+        int vAddr = machine->ReadRegister(BAD_VADDR_REG);
+        int vpn = vAddr / PAGE_SIZE;
+        ASSERT(vpn >= 0);
+        TranslationEntry e = currentThread->space->GetPage(vpn);
+        
+        tlbOffset %= TLB_SIZE;
+        machine->GetMMU()->tlb[tlbOffset] = e;
+        tlbOffset++;
+    }
+
+    static void ReadOnlyHandler(ExceptionType _et) {
+        DEBUG('b', "Read only exception\n");
+        ASSERT(false);
+    }
+#endif
 /// By default, only system calls have their own handler.  All other
 /// exception types are assigned the default handler.
 void
@@ -348,8 +368,13 @@ SetExceptionHandlers()
 {
     machine->SetHandler(NO_EXCEPTION,            &DefaultHandler);
     machine->SetHandler(SYSCALL_EXCEPTION,       &SyscallHandler);
-    machine->SetHandler(PAGE_FAULT_EXCEPTION,    &DefaultHandler);
-    machine->SetHandler(READ_ONLY_EXCEPTION,     &DefaultHandler);
+    #ifdef USE_TLB
+        machine->SetHandler(PAGE_FAULT_EXCEPTION,    &PageFaultHandler);
+        machine->SetHandler(READ_ONLY_EXCEPTION,     &ReadOnlyHandler);
+    #else
+        machine->SetHandler(PAGE_FAULT_EXCEPTION,    &DefaultHandler);
+        machine->SetHandler(READ_ONLY_EXCEPTION,     &DefaultHandler);
+    #endif
     machine->SetHandler(BUS_ERROR_EXCEPTION,     &DefaultHandler);
     machine->SetHandler(ADDRESS_ERROR_EXCEPTION, &DefaultHandler);
     machine->SetHandler(OVERFLOW_EXCEPTION,      &DefaultHandler);

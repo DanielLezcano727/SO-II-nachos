@@ -7,6 +7,7 @@
 #include "lib/utility.hh"
 #include "threads/system.hh"
 
+#define TLB_TRIES 4
 
 void ReadBufferFromUser(int userAddress, char *outBuffer,
                         unsigned byteCount)
@@ -20,7 +21,15 @@ void ReadBufferFromUser(int userAddress, char *outBuffer,
     do {
         int temp;
         count++;
-        ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        #ifdef USE_TLB
+            int j = TLB_TRIES;
+            while (j > 0 && !machine->ReadMem(userAddress, 1, &temp))
+                j--;
+            userAddress++;
+            ASSERT(j != 0);
+        #else
+            ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        #endif
         *outBuffer = (unsigned char) temp;
         outBuffer++;
     } while (count < byteCount);
@@ -37,7 +46,15 @@ bool ReadStringFromUser(int userAddress, char *outString,
     do {
         int temp;
         count++;
-        ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        #ifdef USE_TLB
+            int j = TLB_TRIES;
+            while (j > 0 && !machine->ReadMem(userAddress, 1, &temp))
+                j--;
+            userAddress++;
+            ASSERT(j != 0);
+        #else
+            ASSERT(machine->ReadMem(userAddress++, 1, &temp));
+        #endif
         *outString = (unsigned char) temp;
     } while (*outString++ != '\0' && count < maxByteCount);
 
@@ -52,9 +69,17 @@ void WriteBufferToUser(const char *buffer, int userAddress,
     ASSERT(byteCount != 0);
     // ASSERT(sizeof (buffer) / sizeof (char) >= byteCount); Ver si esto funciona bien
 
-    for (unsigned count = 0; count < byteCount; count++)
-        ASSERT(machine->WriteMem(userAddress++, 1, (int)buffer[count]));
-
+    for (unsigned count = 0; count < byteCount; count++) {
+        #ifdef USE_TLB
+            int j = TLB_TRIES;
+            while (j > 0 && !machine->WriteMem(userAddress, 1, (int)buffer[count]))
+                j--;
+            userAddress++;
+            ASSERT(j != 0);
+        #else
+            ASSERT(machine->WriteMem(userAddress++, 1, (int)buffer[count]));
+        #endif
+    }
 }
 
 void WriteStringToUser(const char *string, int userAddress)
@@ -65,6 +90,15 @@ void WriteStringToUser(const char *string, int userAddress)
     unsigned count = 0;
 
     do {
-        ASSERT(machine->WriteMem(userAddress++, 1, string[count++]));
+        #ifdef USE_TLB
+            int j = TLB_TRIES;
+            while (j > 0 && !machine->WriteMem(userAddress, 1, string[count]))
+                j--;
+            userAddress++;
+            count++;
+            ASSERT(j != 0);
+        #else
+            ASSERT(machine->WriteMem(userAddress++, 1, string[count++]));
+        #endif
     } while (string[count] != '\0');
 }

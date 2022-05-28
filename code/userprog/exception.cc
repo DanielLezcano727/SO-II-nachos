@@ -358,6 +358,11 @@ SyscallHandler(ExceptionType _et)
         stats->numPageFaults++;
         TranslationEntry e = currentThread->space->GetPage(vpn);
         
+        #ifdef DEMAND_LOADING
+            if(!e.valid)
+                currentThread->space->LoadPage(vpn);
+        #endif
+
         tlbOffset %= TLB_SIZE;
         machine->GetMMU()->tlb[tlbOffset] = e;
         tlbOffset++;

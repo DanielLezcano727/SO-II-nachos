@@ -73,7 +73,7 @@ public:
     /// need to read and write the bitmap to a file.
     void WriteBack(OpenFile *file) const;
 
-private:
+protected:
 
     /// Number of bits in the bitmap.
     unsigned numBits;

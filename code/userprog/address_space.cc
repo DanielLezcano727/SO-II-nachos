@@ -12,6 +12,25 @@
 
 #include <string.h>
 
+#ifdef SWAP
+char* NameSwapFile(int sid) {
+    if (sid == 0)
+        return "SWAP.0";
+
+    char strSid[11];
+    int largo = 0;
+    char *swapName = new char[15]{ 'S', 'W', 'A', 'P', '.' };
+
+    for (int aux=sid; aux > 0; aux /= 10, largo++)
+        strSid[largo] = aux % 10 + '0';
+
+    for (int i=0; i<largo; i++)
+        swapName[5 + i] = strSid[largo - i - 1];
+    swapName[6 + largo] = '\0';
+
+    return swapName;
+}
+#endif
 
 /// First, set up the translation from program memory to physical memory.
 /// For now, this is really simple (1:1), since we are only uniprogramming,
@@ -31,7 +50,12 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     size = numPages * PAGE_SIZE;
     DEBUG('t', "%d, %d\n", numPages, pages->CountClear());
 
-    ASSERT(numPages <= pages->CountClear());
+    #ifdef SWAP
+        char *nombre = NameSwapFile();
+        fileSystem->Create(nombre, size);
+    #else
+        ASSERT(numPages <= pages->CountClear());
+    #endif
 
     DEBUG('a', "Initializing address space, num pages %u, size %u\n",
           numPages, size);
@@ -170,13 +194,29 @@ unsigned int AddressSpace::Translate(unsigned int virtualAddr)
 
 #ifdef DEMAND_LOADING
 
+void WriteSwap(int vpn) {
+    unsigned physicalPage = pages->GetSector(vpn);
+    pageTable[vpn].dirty = true;
+}
+
 void
 AddressSpace::LoadPage(int vpn) {
-    ASSERT(pages->CountClear() > 0);
+
 
     char *mainMemory = machine->GetMMU()->mainMemory;
 
-    pageTable[vpn].physicalPage = pages->Find();
+    #ifdef SWAP
+        if (pages->CountClear() == 0) {
+            int victim = pages->PickVictim();
+            WriteSwap(victim); // Guardar lo que hay en memoria en el archivo de swap
+                   // Poner como invalido el anterior
+                   // Poner valido el actual
+            pageTable[vpn].physicalPage = victim;
+        }
+    #else
+        ASSERT(pages->CountClear() > 0);
+        pageTable[vpn].physicalPage = pages->Find();
+    #endif
     pageTable[vpn].valid        = true;
 
     memset(mainMemory + pageTable[vpn].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
@@ -209,3 +249,4 @@ AddressSpace::LoadPage(int vpn) {
 }
 
 #endif
+

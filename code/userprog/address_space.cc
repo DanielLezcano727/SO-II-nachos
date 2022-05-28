@@ -100,6 +100,9 @@ AddressSpace::~AddressSpace()
     for (unsigned i = 0; i < numPages; i++)
         pages->Clear(pageTable[i].physicalPage);
     delete[] pageTable;
+    #ifdef DEMAND_LOADING
+        delete exe;
+    #endif
 }
 
 /// Set the initial values for the user-level register set.
@@ -144,7 +147,7 @@ void
 AddressSpace::RestoreState()
 {
     #ifdef USE_TLB
-        for(int i = 0; i < TLB_SIZE; i++)
+        for(unsigned int i = 0; i < TLB_SIZE; i++)
             machine->GetMMU()->tlb[i].valid = false;
     #else
         machine->GetMMU()->pageTable     = pageTable;

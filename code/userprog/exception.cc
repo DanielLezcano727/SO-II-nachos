@@ -320,7 +320,9 @@ SyscallHandler(ExceptionType _et)
                     userThread->space = new AddressSpace(executable);
                     userThread->Fork(StartProc, (void *) savedArgs);
                     machine->WriteRegister(2, userThread->sid);
-                    delete executable;
+                    #ifndef DEMAND_LOADING
+                        delete executable;
+                    #endif
                 }
             } else {
                 machine->WriteRegister(2, -1);

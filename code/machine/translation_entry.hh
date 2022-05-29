@@ -54,6 +54,7 @@ public:
     /// This bit is set by the hardware every time the page is modified.
     bool dirty;
 
+    bool swapped;
 };
 
 

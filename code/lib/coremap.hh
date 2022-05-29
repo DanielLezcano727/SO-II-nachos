@@ -12,6 +12,9 @@ public:
     int GetVPN(int index);
 
     int PickVictim();
+
+    void Mark(unsigned which, unsigned vpn, int sid);
+
 private:
     unsigned *vPage;
     int *thread; // int represents SpaceId

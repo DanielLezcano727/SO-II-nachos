@@ -53,6 +53,7 @@ public:
 
     #ifdef DEMAND_LOADING
         void LoadPage(int vpn);
+        void WriteSwap(int victim);
     #endif
 
 private:

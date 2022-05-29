@@ -8,6 +8,9 @@ public:
     Coremap(unsigned nitems);
     ~Coremap();
 
+    unsigned GetThread(int index);
+    int GetVPN(int index);
+
     int PickVictim();
 private:
     unsigned *vPage;

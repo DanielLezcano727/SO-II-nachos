@@ -14,3 +14,11 @@ Coremap::~Coremap() {
 int Coremap::PickVictim() {
     return rand() % numWords;
 }
+
+unsigned GetThread(int index) {
+    return thread[index]; // No se si habria que dividirlo por BITS_IN_WORD
+}
+
+int GetVPN(int index) {
+    return vPage[index];
+}

@@ -194,30 +194,33 @@ unsigned int AddressSpace::Translate(unsigned int virtualAddr)
 
 #ifdef DEMAND_LOADING
 
-void WriteSwap(int vpn) {
-    unsigned physicalPage = pages->GetSector(vpn);
-    pageTable[vpn].dirty = true;
+void WriteSwap(int victim) {
+    int sid = pages->GetThread(); // Get victim thread id
+    unsigned vpn = pages->GetVPN(); // Get victim vpn
+    OpenFile *swap = fileSystem->Open(swapName(sid)); // Open victim SWAP file
+
+    char *mainMemory = machine->GetMMU()->mainMemory;
+    swap->WriteAt(&mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE], PAGE_SIZE, ? * PAGE_SIZE); // Write physical page contents on SWAP.sid
+    
+    pageTable[vpn].valid = false; // Set vpn entry as invalid
+    pages->Clear(victim); // Clear physical page usage bit
 }
 
 void
 AddressSpace::LoadPage(int vpn) {
-
-
     char *mainMemory = machine->GetMMU()->mainMemory;
 
     #ifdef SWAP
         if (pages->CountClear() == 0) {
             int victim = pages->PickVictim();
-            WriteSwap(victim); // Guardar lo que hay en memoria en el archivo de swap
-                   // Poner como invalido el anterior
-                   // Poner valido el actual
+            WriteSwap(victim); 
             pageTable[vpn].physicalPage = victim;
         }
     #else
         ASSERT(pages->CountClear() > 0);
         pageTable[vpn].physicalPage = pages->Find();
     #endif
-    pageTable[vpn].valid        = true;
+    pageTable[vpn].valid = true;
 
     memset(mainMemory + pageTable[vpn].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
 

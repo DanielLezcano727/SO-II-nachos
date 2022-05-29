@@ -200,9 +200,11 @@ void WriteSwap(int victim) {
     OpenFile *swap = fileSystem->Open(swapName(sid)); // Open victim SWAP file
 
     char *mainMemory = machine->GetMMU()->mainMemory;
-    swap->WriteAt(&mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE], PAGE_SIZE, ? * PAGE_SIZE); // Write physical page contents on SWAP.sid
+    swap->WriteAt(&mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE], PAGE_SIZE, vpn * PAGE_SIZE); // Write physical page contents on SWAP.sid
     
     pageTable[vpn].valid = false; // Set vpn entry as invalid
+    // Que hago con la TLB
+    // Como mierda le digo al proceso que su pagina virtual vpn está guardada en SWAP.sid
     pages->Clear(victim); // Clear physical page usage bit
 }
 
@@ -213,7 +215,7 @@ AddressSpace::LoadPage(int vpn) {
     #ifdef SWAP
         if (pages->CountClear() == 0) {
             int victim = pages->PickVictim();
-            WriteSwap(victim); 
+            WriteSwap(victim);
             pageTable[vpn].physicalPage = victim;
         }
     #else

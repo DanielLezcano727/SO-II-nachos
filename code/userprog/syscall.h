@@ -32,6 +32,7 @@
 #define SC_READ    14
 #define SC_WRITE   15
 #define SC_PS      16
+#define SC_SP      17
 
 
 #ifndef IN_ASM
@@ -65,6 +66,8 @@ SpaceId Exec(char *name, char *argv[], int joinable);
 ///
 /// Return the exit status.
 int Join(SpaceId id);
+
+void StatsPrint();
 
 
 /// User-level thread operations: `Fork` and `Yield`.  To allow multiple

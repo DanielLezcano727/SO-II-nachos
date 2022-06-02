@@ -16,6 +16,10 @@
 #include "synch_console.hh"
 #endif
 
+#ifdef SWAP
+#include "lib/coremap.hh"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,7 +35,7 @@ Interrupt *interrupt;         ///< Interrupt status.
 Statistics *stats;            ///< Performance metrics.
 Timer *timer;                 ///< The hardware timer device, for invoking
                               ///< context switches.
-#define NUM_VIRTUAL_PAGES 100                      
+#define NUM_VIRTUAL_PAGES 10
 
 // 2007, Jose Miguel Santos Espino
 PreemptiveScheduler *preemptiveScheduler = nullptr;
@@ -46,7 +50,11 @@ SynchDisk *synchDisk;
 #endif
 
 #ifdef USER_PROGRAM  // Requires either *FILESYS* or *FILESYS_STUB*.
-Bitmap *pages;      
+#ifdef SWAP
+    Coremap *pages;
+#else
+    Bitmap *pages;      
+#endif
 Machine *machine;  ///< User program memory and registers.
 SynchConsole *synchConsole;
 Table <Thread *> *threadTable;
@@ -143,7 +151,11 @@ Initialize(int argc, char **argv)
 
 #ifdef USER_PROGRAM
     threadTable = new Table<Thread *>();
+#ifdef SWAP
+    pages = new Coremap(NUM_VIRTUAL_PAGES);
+#else
     pages = new Bitmap(NUM_VIRTUAL_PAGES);
+#endif
     bool debugUserProg = false;  // Single step user program.
 #endif
 #ifdef FILESYS_NEEDED

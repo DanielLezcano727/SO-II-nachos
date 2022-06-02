@@ -17,6 +17,9 @@
 #include "machine/statistics.hh"
 #include "machine/timer.hh"
 
+#ifdef SWAP
+#include "lib/coremap.hh"
+#endif
 
 /// Initialization and cleanup routines.
 
@@ -35,7 +38,11 @@ extern Statistics *stats;            ///< Performance metrics.
 extern Timer *timer;                 ///< The hardware alarm clock.
 
 #ifdef USER_PROGRAM
-extern Bitmap *pages;
+#ifdef SWAP
+    extern Coremap *pages;
+#else
+    extern Bitmap *pages;
+#endif
 #include "machine/machine.hh"
 #include "synch_console.hh"
 extern Machine *machine;  // User program memory and registers.

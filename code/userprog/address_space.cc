@@ -12,6 +12,31 @@
 
 #include <string.h>
 
+#ifdef SWAP
+#ifndef DEMAND_LOADING
+ASSERT(false);
+#endif
+#endif
+
+#ifdef SWAP
+char* NameSwapFile(int sid) {
+    if (sid == 0)
+        return (char*)"SWAP\n.0";
+
+    char strSid[11];
+    int largo = 0;
+    char *swapName = new char[15]{ 'S', 'W', 'A', 'P', '.' };
+
+    for (int aux=sid; aux > 0; aux /= 10, largo++)
+        strSid[largo] = aux % 10 + '0';
+
+    for (int i=0; i<largo; i++)
+        swapName[5 + i] = strSid[largo - i - 1];
+    swapName[6 + largo] = '\0';
+
+    return swapName;
+}
+#endif
 
 /// First, set up the translation from program memory to physical memory.
 /// For now, this is really simple (1:1), since we are only uniprogramming,
@@ -20,18 +45,23 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 {
     ASSERT(executable_file != nullptr);
 
-    Executable exe (executable_file);
-    ASSERT(exe.CheckMagic());
+    exe = new Executable (executable_file);
+    ASSERT(exe->CheckMagic());
 
     // How big is address space?
 
-    unsigned size = exe.GetSize() + USER_STACK_SIZE;
+    unsigned size = exe->GetSize() + USER_STACK_SIZE;
       // We need to increase the size to leave room for the stack.
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
     DEBUG('t', "%d, %d\n", numPages, pages->CountClear());
 
-    ASSERT(numPages <= pages->CountClear());
+    #ifdef SWAP
+        char *nombre = NameSwapFile(currentThread->sid);
+        fileSystem->Create(nombre, size);
+    #else
+        ASSERT(numPages <= pages->CountClear());
+    #endif
 
     DEBUG('a', "Initializing address space, num pages %u, size %u\n",
           numPages, size);
@@ -41,46 +71,53 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     pageTable = new TranslationEntry[numPages];
     for (unsigned i = 0; i < numPages; i++) {
         pageTable[i].virtualPage  = i;
-        pageTable[i].physicalPage = pages->Find();
-        pageTable[i].valid        = true;
+        #ifdef DEMAND_LOADING
+            pageTable[i].physicalPage = -1;
+            pageTable[i].valid        = false;
+        #else
+            pageTable[i].physicalPage = pages->Find();
+            pageTable[i].valid        = true;
+        #endif
         pageTable[i].use          = false;
         pageTable[i].dirty        = false;
         pageTable[i].readOnly     = false;
+        pageTable[i].swapped      = false;
           // If the code segment was entirely on a separate page, we could
           // set its pages to be read-only.
     }
 
-    char *mainMemory = machine->GetMMU()->mainMemory;
+    #ifndef DEMAND_LOADING
+        char *mainMemory = machine->GetMMU()->mainMemory;
 
-    // Zero out the entire address space, to zero the unitialized data
-    // segment and the stack segment.
+        // Zero out the entire address space, to zero the unitialized data
+        // segment and the stack segment.
 
-    for (unsigned i = 0; i < numPages; i++)
-        memset(mainMemory + pageTable[i].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
+        for (unsigned i = 0; i < numPages; i++)
+            memset(mainMemory + pageTable[i].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
 
-    // Then, copy in the code and data segments into memory.
-    uint32_t codeSize = exe.GetCodeSize();
-    uint32_t initDataSize = exe.GetInitDataSize();
-    unsigned int physicalAddr;
-    if (codeSize > 0) {
-        uint32_t virtualAddr = exe.GetCodeAddr();
-        DEBUG('a', "Initializing code segment, at 0x%X, size %u\n",
-              virtualAddr, codeSize);
-        for (unsigned i = 0; i < codeSize; i++) {
-            physicalAddr = Translate(virtualAddr + i);
-            exe.ReadCodeBlock(&mainMemory[physicalAddr], 1, i);
+        // Then, copy in the code and data segments into memory.
+        uint32_t codeSize = exe->GetCodeSize();
+        uint32_t initDataSize = exe->GetInitDataSize();
+        unsigned int physicalAddr;
+        if (codeSize > 0) {
+            uint32_t virtualAddr = exe->GetCodeAddr();
+            DEBUG('a', "Initializing code segment, at 0x%X, size %u\n",
+                virtualAddr, codeSize);
+            for (unsigned i = 0; i < codeSize; i++) {
+                physicalAddr = Translate(virtualAddr + i);
+                exe->ReadCodeBlock(&mainMemory[physicalAddr], 1, i);
+            }
         }
-    }
-    if (initDataSize > 0) {
-        uint32_t virtualAddr = exe.GetInitDataAddr();
-        DEBUG('a', "Initializing data segment, at 0x%X, size %u\n",
-              virtualAddr, initDataSize);
-        for (unsigned i = 0; i < initDataSize; i++) {
-            physicalAddr = Translate(virtualAddr + i);
-            exe.ReadDataBlock(&mainMemory[physicalAddr], 1, i);
+        if (initDataSize > 0) {
+            uint32_t virtualAddr = exe->GetInitDataAddr();
+            DEBUG('a', "Initializing data segment, at 0x%X, size %u\n",
+                virtualAddr, initDataSize);
+            for (unsigned i = 0; i < initDataSize; i++) {
+                physicalAddr = Translate(virtualAddr + i);
+                exe->ReadDataBlock(&mainMemory[physicalAddr], 1, i);
+            }
         }
-    }
-
+    #endif
 }
 
 /// Deallocate an address space.
@@ -88,9 +125,15 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 /// Nothing for now!
 AddressSpace::~AddressSpace()
 {
+    // Haciendo la plancha de Memoria virtual (plancha 4) nos dimos cuenta que las páginas
+    // nunca se terminan de liberar por lo que suponemos que algo de esta función no está andando correctamente
+    // No nos dimos cuenta antes debido al tamaño pequeño de los programas
     for (unsigned i = 0; i < numPages; i++)
         pages->Clear(pageTable[i].physicalPage);
     delete[] pageTable;
+    #ifdef DEMAND_LOADING
+        delete exe;
+    #endif
 }
 
 /// Set the initial values for the user-level register set.
@@ -134,8 +177,19 @@ AddressSpace::SaveState()
 void
 AddressSpace::RestoreState()
 {
-    machine->GetMMU()->pageTable     = pageTable;
-    machine->GetMMU()->pageTableSize = numPages;
+    #ifdef USE_TLB
+        for(unsigned int i = 0; i < TLB_SIZE; i++)
+            machine->GetMMU()->tlb[i].valid = false;
+    #else
+        machine->GetMMU()->pageTable     = pageTable;
+        machine->GetMMU()->pageTableSize = numPages;
+    #endif
+}
+
+TranslationEntry
+AddressSpace::GetPage(int vpn)
+{
+    return pageTable[vpn];
 }
 
 unsigned int AddressSpace::Translate(unsigned int virtualAddr)
@@ -144,3 +198,91 @@ unsigned int AddressSpace::Translate(unsigned int virtualAddr)
   uint32_t offset = virtualAddr % PAGE_SIZE;
   return pageTable[page].physicalPage * PAGE_SIZE + offset;
 }
+
+#ifdef DEMAND_LOADING
+
+void AddressSpace::WriteSwap(int victim) {
+    int sid = pages->GetThread(victim); // Get victim thread id
+    unsigned vpn = pages->GetVPN(victim); // Get victim vpn
+    OpenFile *swap = fileSystem->Open(NameSwapFile(sid)); // Open victim SWAP file
+
+    char *mainMemory = machine->GetMMU()->mainMemory;
+    swap->WriteAt(&mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE], PAGE_SIZE, vpn * PAGE_SIZE); // Write physical page contents on SWAP.sid
+    
+    pageTable[vpn].valid = false; // Set vpn entry as invalid
+    pageTable[vpn].swapped = true; // Set vpn entry as swapped
+    TranslationEntry *tlb = machine->GetMMU()->tlb;
+    for (int i=0; i<TLB_SIZE; i++){
+        if (tlb[i].physicalPage == pageTable[vpn].physicalPage && tlb[i].valid)
+            tlb[i].valid = false;
+    }
+    delete swap;
+}
+
+void
+AddressSpace::LoadPage(int vpn) {
+    char *mainMemory = machine->GetMMU()->mainMemory;
+
+    #ifdef SWAP
+        if (pages->CountClear() == 0) {
+            int victim = pages->PickVictim();
+            int victimSid = pages->GetThread(victim);
+            if (threadTable->HasKey(victimSid))
+                threadTable->Get(victimSid)->space->WriteSwap(victim);
+            pageTable[vpn].physicalPage = victim;
+            stats->numSwaps++;
+        } else {
+            pageTable[vpn].physicalPage = pages->Find();
+        }
+        pages->Mark(pageTable[vpn].physicalPage, vpn, currentThread->sid);
+    #else
+        ASSERT(pages->CountClear() > 0);
+        pageTable[vpn].physicalPage = pages->Find();
+    #endif
+    pageTable[vpn].valid = true;
+
+    #ifdef SWAP
+    
+    if (pageTable[vpn].swapped) {
+        OpenFile *swap = fileSystem->Open(NameSwapFile(currentThread->sid)); // Open our SWAP file
+        swap->ReadAt(&mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE], PAGE_SIZE, vpn * PAGE_SIZE); // Write physical page contents on SWAP.sid
+        delete swap;
+    } else {
+
+    #endif
+
+    memset(mainMemory + pageTable[vpn].physicalPage * PAGE_SIZE, 0, PAGE_SIZE);
+
+    uint32_t codeSize = exe->GetCodeSize();
+    uint32_t initDataSize = exe->GetInitDataSize();
+
+    uint32_t codeAddr = exe->GetCodeAddr();
+    uint32_t dataAddr = exe->GetInitDataAddr();
+
+    unsigned int virtualAddr = vpn * PAGE_SIZE;
+    unsigned int size = 0, sizeData;
+
+    if (codeSize > 0 && codeSize + codeAddr > virtualAddr) {
+        size = codeSize - virtualAddr;
+        exe->ReadCodeBlock(
+            &mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE],
+            PAGE_SIZE > size ? size : PAGE_SIZE,
+            virtualAddr - codeAddr);
+        virtualAddr += size;
+    }
+
+    if (size < PAGE_SIZE && initDataSize > 0 && dataAddr + initDataSize > virtualAddr) {
+        sizeData = initDataSize - virtualAddr;
+        exe->ReadDataBlock(
+            &mainMemory[pageTable[vpn].physicalPage * PAGE_SIZE + size],
+            PAGE_SIZE > sizeData ? size : PAGE_SIZE,
+            virtualAddr - dataAddr);
+    }
+    #ifdef SWAP
+    }
+
+    #endif
+}
+
+#endif
+

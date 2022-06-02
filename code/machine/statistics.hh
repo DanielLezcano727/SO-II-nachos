@@ -47,11 +47,17 @@ public:
     /// Number of virtual memory page faults.
     unsigned long numPageFaults;
 
+    /// Number of successful hits when looking for a page.
+    unsigned long numPageHits;
+
     /// Number of packets sent over the network.
     unsigned long numPacketsSent;
 
     /// Number of packets received over the network.
     unsigned long numPacketsRecvd;
+
+    /// Number of swaps.
+    unsigned long numSwaps;
 
 #ifdef DFS_TICKS_FIX
     /// Number of times the tick count gets reset.

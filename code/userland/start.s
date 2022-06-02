@@ -117,6 +117,14 @@ Read:
         j       $31
         .end    Read
 
+        .globl  StatsPrint
+        .ent    StatsPrint
+StatsPrint:
+        addiu   $2, $0, SC_SP
+        syscall
+        j       $31
+        .end    StatsPrint
+
         .globl  Write
         .ent    Write
 Write:

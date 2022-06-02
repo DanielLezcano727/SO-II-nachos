@@ -13,6 +13,12 @@
 #include <string.h>
 
 #ifdef SWAP
+#ifndef DEMAND_LOADING
+ASSERT(false);
+#endif
+#endif
+
+#ifdef SWAP
 char* NameSwapFile(int sid) {
     if (sid == 0)
         return (char*)"SWAP\n.0";
@@ -224,6 +230,7 @@ AddressSpace::LoadPage(int vpn) {
             if (threadTable->HasKey(victimSid))
                 threadTable->Get(victimSid)->space->WriteSwap(victim);
             pageTable[vpn].physicalPage = victim;
+            stats->numSwaps++;
         } else {
             pageTable[vpn].physicalPage = pages->Find();
         }

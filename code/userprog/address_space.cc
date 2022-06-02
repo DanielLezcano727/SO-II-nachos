@@ -125,9 +125,6 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 /// Nothing for now!
 AddressSpace::~AddressSpace()
 {
-    // Haciendo la plancha de Memoria virtual (plancha 4) nos dimos cuenta que las páginas
-    // nunca se terminan de liberar por lo que suponemos que algo de esta función no está andando correctamente
-    // No nos dimos cuenta antes debido al tamaño pequeño de los programas
     for (unsigned i = 0; i < numPages; i++)
         pages->Clear(pageTable[i].physicalPage);
     delete[] pageTable;

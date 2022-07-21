@@ -15,7 +15,7 @@ const unsigned MAX_FILE_SIZE = NUM_DIRECT * SECTOR_SIZE;
 
 struct RawFileHeader {
     bool parent;
-    unsigned nextHeader;
+    int nextHeader;
     unsigned numBytes;  ///< Number of bytes in the file.
     unsigned numSectors;  ///< Number of data sectors in the file.
     unsigned dataSectors[NUM_DIRECT];  ///< Disk sector numbers for each data

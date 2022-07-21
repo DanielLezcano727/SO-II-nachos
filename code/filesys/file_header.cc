@@ -46,8 +46,9 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 
     raw.parent = true;
     raw.nextHeader = -1;
-    raw.numBytes = fileSize;
-    raw.numSectors = DivRoundUp(fileSize, SECTOR_SIZE);
+    raw.numBytes = fileSize > MAX_FILE_SIZE ? fileSize : MAX_FILE_SIZE;
+    int sectores = DivRoundUp(fileSize, SECTOR_SIZE);
+    raw.numSectors = sectores > NUM_DIRECT ? sectores : NUM_DIRECT;
     for (unsigned i = 0; i < NUM_DIRECT; i++) 
                 raw.dataSectors[i] = 0;
     if (freeMap->CountClear() < raw.numSectors) {
@@ -56,7 +57,7 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 
     bool tmp = true;
 
-    for (unsigned i = 0; i <= NUM_DIRECT && i < raw.numSectors; i++) {
+    for (unsigned i = 0; i < raw.numSectors; i++) {
         if (i != NUM_DIRECT) {
             raw.dataSectors[i] = freeMap->Find();
         } else {
@@ -64,11 +65,12 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
             if (raw.nextHeader == -1)
                 return false;
 
-            FileHeader* header = FetchFrom(raw.nextHeader);
-            tmp = header->Allocate(freeMap, raw.numBytes - (NUM_DIRECT * SECTOR_SIZE));
+            FileHeader* header = new FileHeader;
+            header->FetchFrom(raw.nextHeader);
+            tmp = header->Allocate(freeMap, raw.numBytes - MAX_FILE_SIZE);
             header->raw.parent = false;
             if (tmp)
-                header->WriteBack();
+                header->WriteBack(raw.nextHeader);
 
             delete header;
         }
@@ -89,7 +91,8 @@ FileHeader::Deallocate(Bitmap *freeMap)
             freeMap->Clear(raw.dataSectors[i]);
 
     if (raw.nextHeader != -1) {
-        FileHeader* header = FetchFrom(raw.nextHeader);
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
         header->Deallocate(freeMap);
         freeMap->Clear(raw.nextHeader);
         delete header;
@@ -126,7 +129,8 @@ FileHeader::ByteToSector(unsigned offset)
     if (offset > (NUM_DIRECT * SECTOR_SIZE)) {
         ASSERT(raw.nextHeader);
 
-        FileHeader* header = FetchFrom(raw.nextHeader);
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
         unsigned tmp = header->ByteToSector(offset - (NUM_DIRECT * SECTOR_SIZE));
         delete header;
         return tmp;
@@ -139,8 +143,15 @@ FileHeader::ByteToSector(unsigned offset)
 unsigned
 FileHeader::FileLength() const
 {
-    ASSERT(raw.parent);
-    return raw.numBytes;
+    int len = 0;
+    if(raw.nextHeader != -1) {
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
+        len = header->FileLength();
+        delete header;
+    }
+
+    return raw.numBytes + len;
 }
 
 /// Print the contents of the file header, and the contents of all the data
@@ -167,12 +178,13 @@ FileHeader::Print(const char *title)
 
 void
 FileHeader::PrintNumSector() {
-    for (unsigned i = 0; i < NUM_DIRECT && i < raw.numSectors; i++) {
+    for (unsigned i = 0; i < raw.numSectors; i++) {
         printf("%u ", raw.dataSectors[i]);
     }
 
     if (raw.nextHeader != -1) {
-        FileHeader* header = FetchFrom(raw.nextHeader);
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
         header->PrintNumSector();
         delete header;
     }
@@ -182,7 +194,7 @@ void
 FileHeader::PrintData() {
     char *data = new char [SECTOR_SIZE];
 
-    for (unsigned i = 0, k = 0; i < NUM_DIRECT && i < raw.numSectors; i++) {
+    for (unsigned i = 0, k = 0; i < raw.numSectors; i++) {
         printf("    contents of block %u:\n", raw.dataSectors[i]);
         synchDisk->ReadSector(raw.dataSectors[i], data);
         for (unsigned j = 0; j < SECTOR_SIZE && k < raw.numBytes; j++, k++) {
@@ -198,7 +210,8 @@ FileHeader::PrintData() {
     delete [] data;
 
     if (raw.nextHeader != -1) {
-        FileHeader* header = FetchFrom(raw.nextHeader);
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
         header->PrintNumSector();
         delete header;
     }

@@ -29,7 +29,6 @@
 #include <ctype.h>
 #include <stdio.h>
 
-
 /// Initialize a fresh file header for a newly created file.  Allocate data
 /// blocks for the file out of the map of free disk blocks.  Return false if
 /// there are not enough free blocks to accomodate the new file.
@@ -45,16 +44,36 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
         return false;
     }
 
+    raw.parent = true;
+    raw.nextHeader = -1;
     raw.numBytes = fileSize;
     raw.numSectors = DivRoundUp(fileSize, SECTOR_SIZE);
+    for (unsigned i = 0; i < NUM_DIRECT; i++) 
+                raw.dataSectors[i] = 0;
     if (freeMap->CountClear() < raw.numSectors) {
         return false;  // Not enough space.
     }
 
-    for (unsigned i = 0; i < raw.numSectors; i++) {
-        raw.dataSectors[i] = freeMap->Find();
+    bool tmp = true;
+
+    for (unsigned i = 0; i <= NUM_DIRECT && i < raw.numSectors; i++) {
+        if (i != NUM_DIRECT) {
+            raw.dataSectors[i] = freeMap->Find();
+        } else {
+            raw.nextHeader = freeMap->Find();
+            if (raw.nextHeader == -1)
+                return false;
+
+            FileHeader* header = FetchFrom(raw.nextHeader);
+            tmp = header->Allocate(freeMap, raw.numBytes - (NUM_DIRECT * SECTOR_SIZE));
+            header->raw.parent = false;
+            if (tmp)
+                header->WriteBack();
+
+            delete header;
+        }
     }
-    return true;
+    return tmp;
 }
 
 /// De-allocate all the space allocated for data blocks for this file.
@@ -65,9 +84,15 @@ FileHeader::Deallocate(Bitmap *freeMap)
 {
     ASSERT(freeMap != nullptr);
 
-    for (unsigned i = 0; i < raw.numSectors; i++) {
-        ASSERT(freeMap->Test(raw.dataSectors[i]));  // ought to be marked!
-        freeMap->Clear(raw.dataSectors[i]);
+    for (unsigned i = 0; i < NUM_DIRECT; i++)
+        if (freeMap->Test(raw.dataSectors[i]) && raw.dataSectors[i])
+            freeMap->Clear(raw.dataSectors[i]);
+
+    if (raw.nextHeader != -1) {
+        FileHeader* header = FetchFrom(raw.nextHeader);
+        header->Deallocate(freeMap);
+        freeMap->Clear(raw.nextHeader);
+        delete header;
     }
 }
 
@@ -98,13 +123,23 @@ FileHeader::WriteBack(unsigned sector)
 unsigned
 FileHeader::ByteToSector(unsigned offset)
 {
-    return raw.dataSectors[offset / SECTOR_SIZE];
+    if (offset > (NUM_DIRECT * SECTOR_SIZE)) {
+        ASSERT(raw.nextHeader);
+
+        FileHeader* header = FetchFrom(raw.nextHeader);
+        unsigned tmp = header->ByteToSector(offset - (NUM_DIRECT * SECTOR_SIZE));
+        delete header;
+        return tmp;
+    } else {
+        return raw.dataSectors[offset / SECTOR_SIZE];
+    }
 }
 
 /// Return the number of bytes in the file.
 unsigned
 FileHeader::FileLength() const
 {
+    ASSERT(raw.parent);
     return raw.numBytes;
 }
 
@@ -113,24 +148,41 @@ FileHeader::FileLength() const
 void
 FileHeader::Print(const char *title)
 {
-    char *data = new char [SECTOR_SIZE];
+    if (raw.parent) {
+        if (title == nullptr) {
+            printf("File header:\n");
+        } else {
+            printf("%s file header:\n", title);
+        }
 
-    if (title == nullptr) {
-        printf("File header:\n");
-    } else {
-        printf("%s file header:\n", title);
+        printf("    size: %u bytes\n"
+            "    block indexes: ",
+            raw.numBytes);        
     }
 
-    printf("    size: %u bytes\n"
-           "    block indexes: ",
-           raw.numBytes);
+    PrintNumSector();
+    printf("\n");
+    PrintData();
+}
 
-    for (unsigned i = 0; i < raw.numSectors; i++) {
+void
+FileHeader::PrintNumSector() {
+    for (unsigned i = 0; i < NUM_DIRECT && i < raw.numSectors; i++) {
         printf("%u ", raw.dataSectors[i]);
     }
-    printf("\n");
 
-    for (unsigned i = 0, k = 0; i < raw.numSectors; i++) {
+    if (raw.nextHeader != -1) {
+        FileHeader* header = FetchFrom(raw.nextHeader);
+        header->PrintNumSector();
+        delete header;
+    }
+}
+
+void
+FileHeader::PrintData() {
+    char *data = new char [SECTOR_SIZE];
+
+    for (unsigned i = 0, k = 0; i < NUM_DIRECT && i < raw.numSectors; i++) {
         printf("    contents of block %u:\n", raw.dataSectors[i]);
         synchDisk->ReadSector(raw.dataSectors[i], data);
         for (unsigned j = 0; j < SECTOR_SIZE && k < raw.numBytes; j++, k++) {
@@ -142,7 +194,14 @@ FileHeader::Print(const char *title)
         }
         printf("\n");
     }
+    
     delete [] data;
+
+    if (raw.nextHeader != -1) {
+        FileHeader* header = FetchFrom(raw.nextHeader);
+        header->PrintNumSector();
+        delete header;
+    }
 }
 
 const RawFileHeader *

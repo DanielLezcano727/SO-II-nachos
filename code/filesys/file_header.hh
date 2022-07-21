@@ -64,6 +64,10 @@ public:
     const RawFileHeader *GetRaw() const;
 
 private:
+
+    void PrintNumSector();
+    void PrintData();
+
     RawFileHeader raw;
 };
 

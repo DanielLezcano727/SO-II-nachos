@@ -63,10 +63,14 @@ public:
     /// system at a low level.
     const RawFileHeader *GetRaw() const;
 
+    void Expand(unsigned bytes);
+
 private:
 
     void PrintNumSector();
     void PrintData();
+    int GetnumBytes();
+    int GetnumSectors();
 
     RawFileHeader raw;
 };

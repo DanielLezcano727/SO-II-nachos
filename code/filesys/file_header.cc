@@ -29,6 +29,52 @@
 #include <ctype.h>
 #include <stdio.h>
 
+static const unsigned FREE_MAP_SECTOR = 0;
+
+void 
+FileHeader::Expand(unsigned numBytes) {
+    if(raw.nextHeader != -1) {
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
+        header->Expand(numBytes);
+        header->WriteBack(raw.nextHeader);
+        delete header;
+    }else {
+        unsigned i = 0;
+        for (; i != NUM_DIRECT && raw.dataSectors[i]; i++);
+
+        OpenFile* freeMapFile   = new OpenFile(FREE_MAP_SECTOR); //No se si está bien abrirlo de nuevo
+        Bitmap* freeMap = new Bitmap(NUM_SECTORS);
+        freeMap->FetchFrom(freeMapFile); //De donde sacamos el bitmap (abierto en fileSys)
+        Allocate(freeMap, raw.numBytes); //No se si deberíamos llamar con raw.numBytes (tamaño total supongo)
+                                         //o con raw.numBytes - GetnumBytes()
+        freeMap->WriteBack(freeMapFile);
+    }
+}
+
+int
+FileHeader::GetnumBytes() {
+    int aux = 0;
+    int i = 0;
+    if(raw.nextHeader != -1) {
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
+        aux = MAX_FILE_SIZE + header->GetnumBytes();
+        delete header;
+    }else {
+        for (; i != NUM_DIRECT && raw.dataSectors[i]; i++);
+    }
+
+    return aux + i * SECTOR_SIZE;
+}
+
+int
+FileHeader::GetnumSectors() {
+    int bytes = GetnumBytes();
+    int sectors = bytes / SECTOR_SIZE;
+    return sectors + 1;
+}
+
 /// Initialize a fresh file header for a newly created file.  Allocate data
 /// blocks for the file out of the map of free disk blocks.  Return false if
 /// there are not enough free blocks to accomodate the new file.
@@ -46,12 +92,17 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 
     raw.parent = true;
     raw.nextHeader = -1;
-    raw.numBytes = fileSize > MAX_FILE_SIZE ? fileSize : MAX_FILE_SIZE;
-    int sectores = DivRoundUp(fileSize, SECTOR_SIZE);
-    raw.numSectors = sectores > NUM_DIRECT ? sectores : NUM_DIRECT;
+    raw.numBytes = fileSize < MAX_FILE_SIZE ? fileSize : MAX_FILE_SIZE;
+    const unsigned int sectores = DivRoundUp(fileSize, SECTOR_SIZE);
+    raw.numSectors = sectores < NUM_DIRECT ? sectores : NUM_DIRECT;
     for (unsigned i = 0; i < NUM_DIRECT; i++) 
                 raw.dataSectors[i] = 0;
-    if (freeMap->CountClear() < raw.numSectors) {
+
+    if (!fileSize) {
+        return true;
+    }
+
+    if (freeMap->CountClear() < raw.numSectors - GetnumSectors()) {
         return false;  // Not enough space.
     }
 

@@ -190,6 +190,7 @@ FileSystem::Create(const char *name, unsigned initialSize)
         } else {
             FileHeader *h = new FileHeader;
             success = h->Allocate(freeMap, initialSize);
+            DEBUG('f', "Allocate result: %d\n", success);
               // Fails if no space on disk for data.
             if (success) {
                 // Everything worked, flush all changes back to disk.

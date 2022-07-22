@@ -151,8 +151,11 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     bool firstAligned, lastAligned;
     char *buf;
 
-    if (position + numBytes > fileLength)
-        hdr->Expand(position + numBytes - fileLength);
+    if (position + numBytes > fileLength) {
+        DEBUG('f', "Requested expand\n");
+        bool res = hdr->Expand(position + numBytes - fileLength);
+        if (!res) return 0;
+    }
     
     firstSector = DivRoundDown(position, SECTOR_SIZE);
     lastSector  = DivRoundDown(position + numBytes - 1, SECTOR_SIZE);

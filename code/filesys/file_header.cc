@@ -31,48 +31,56 @@
 
 static const unsigned FREE_MAP_SECTOR = 0;
 
-void 
+bool 
 FileHeader::Expand(unsigned numBytes) {
+    bool res = true;
     if(raw.nextHeader != -1) {
         FileHeader* header = new FileHeader;
         header->FetchFrom(raw.nextHeader);
-        header->Expand(numBytes);
+        res = header->Expand(numBytes);
         header->WriteBack(raw.nextHeader);
         delete header;
     }else {
-        unsigned i = 0;
-        for (; i != NUM_DIRECT && raw.dataSectors[i]; i++);
-
-        OpenFile* freeMapFile   = new OpenFile(FREE_MAP_SECTOR); //No se si está bien abrirlo de nuevo
+        OpenFile* freeMapFile   = new OpenFile(FREE_MAP_SECTOR); //Podemos abrir de nuevo el freeMapFile (???)
         Bitmap* freeMap = new Bitmap(NUM_SECTORS);
-        freeMap->FetchFrom(freeMapFile); //De donde sacamos el bitmap (abierto en fileSys)
-        Allocate(freeMap, raw.numBytes); //No se si deberíamos llamar con raw.numBytes (tamaño total supongo)
-                                         //o con raw.numBytes - GetnumBytes()
+        freeMap->FetchFrom(freeMapFile);
+        unsigned newNumBytes = numBytes - (SECTOR_SIZE - raw.numBytes); //Take into account left-over bytes in last sector
+        
+        if(newNumBytes <= 0) {
+            raw.numBytes += numBytes;
+            return true;
+        }
+        if (freeMap->CountClear() < DivRoundUp(numBytes, SECTOR_SIZE)) {
+            return false;  // Not enough space.
+        }
+
+        unsigned int oldnumSectors = raw.numSectors;
+        raw.numBytes = raw.numBytes + numBytes < MAX_FILE_SIZE ? raw.numBytes + numBytes : MAX_FILE_SIZE;
+        const unsigned int sectores = DivRoundUp(newNumBytes, SECTOR_SIZE);
+        raw.numSectors = sectores < NUM_DIRECT ? sectores : NUM_DIRECT;
+
+        for (unsigned i = oldnumSectors + 1; i < raw.numSectors; i++) {
+            raw.dataSectors[i] = freeMap->Find();
+        }
+
+        if (sectores > raw.numSectors - oldnumSectors) {
+            raw.nextHeader = freeMap->Find();
+            if (raw.nextHeader == -1)
+                return false;
+
+            FileHeader* header = new FileHeader;
+            res = header->Allocate(freeMap, numBytes - (NUM_DIRECT - (oldnumSectors + 1)) * SECTOR_SIZE);
+            header->raw.parent = false;
+            if (res)
+                header->WriteBack(raw.nextHeader);
+
+            delete header;
+        }
+
         freeMap->WriteBack(freeMapFile);
     }
-}
 
-int
-FileHeader::GetnumBytes() {
-    int aux = 0;
-    int i = 0;
-    if(raw.nextHeader != -1) {
-        FileHeader* header = new FileHeader;
-        header->FetchFrom(raw.nextHeader);
-        aux = MAX_FILE_SIZE + header->GetnumBytes();
-        delete header;
-    }else {
-        for (; i != NUM_DIRECT && raw.dataSectors[i]; i++);
-    }
-
-    return aux + i * SECTOR_SIZE;
-}
-
-int
-FileHeader::GetnumSectors() {
-    int bytes = GetnumBytes();
-    int sectors = bytes / SECTOR_SIZE;
-    return sectors + 1;
+    return res;
 }
 
 /// Initialize a fresh file header for a newly created file.  Allocate data
@@ -86,9 +94,9 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 {
     ASSERT(freeMap != nullptr);
 
-    if (fileSize > MAX_FILE_SIZE) {
-        return false;
-    }
+    // if (fileSize > DISK_SIZE) {
+    //     return false;
+    // }
 
     raw.parent = true;
     raw.nextHeader = -1;
@@ -102,30 +110,27 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
         return true;
     }
 
-    if (freeMap->CountClear() < raw.numSectors - GetnumSectors()) {
-        return false;  // Not enough space.
-    }
-
     bool tmp = true;
 
     for (unsigned i = 0; i < raw.numSectors; i++) {
-        if (i != NUM_DIRECT) {
-            raw.dataSectors[i] = freeMap->Find();
-        } else {
-            raw.nextHeader = freeMap->Find();
-            if (raw.nextHeader == -1)
-                return false;
-
-            FileHeader* header = new FileHeader;
-            header->FetchFrom(raw.nextHeader);
-            tmp = header->Allocate(freeMap, raw.numBytes - MAX_FILE_SIZE);
-            header->raw.parent = false;
-            if (tmp)
-                header->WriteBack(raw.nextHeader);
-
-            delete header;
-        }
+        raw.dataSectors[i] = freeMap->Find();
+        DEBUG('f', "Found free sector\n");
     }
+
+    if (sectores > raw.numSectors) {
+        raw.nextHeader = freeMap->Find();
+        if (raw.nextHeader == -1)
+            return false;
+        FileHeader* header = new FileHeader;
+        // header->FetchFrom(raw.nextHeader);
+        tmp = header->Allocate(freeMap, fileSize - (raw.numSectors*SECTOR_SIZE));
+        DEBUG('f', "One indirection\n");
+        header->raw.parent = false;
+        if (tmp)
+            header->WriteBack(raw.nextHeader);
+        delete header;
+    }
+
     return tmp;
 }
 

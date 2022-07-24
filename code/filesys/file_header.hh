@@ -63,7 +63,7 @@ public:
     /// system at a low level.
     const RawFileHeader *GetRaw() const;
 
-    bool Expand(unsigned bytes);
+    // bool Expand(unsigned bytes);
 
 private:
 

@@ -29,59 +29,62 @@
 #include <ctype.h>
 #include <stdio.h>
 
-// static const unsigned FREE_MAP_SECTOR = 0;
+static const unsigned FREE_MAP_SECTOR = 0;
 
-// bool 
-// FileHeader::Expand(unsigned numBytes) {
-//     bool res = true;
-//     if(raw.nextHeader != -1) {
-//         FileHeader* header = new FileHeader;
-//         header->FetchFrom(raw.nextHeader);
-//         res = header->Expand(numBytes);
-//         header->WriteBack(raw.nextHeader);
-//         delete header;
-//     }else {
-//         OpenFile* freeMapFile   = new OpenFile(FREE_MAP_SECTOR); //Podemos abrir de nuevo el freeMapFile (???)
-//         Bitmap* freeMap = new Bitmap(NUM_SECTORS);
-//         freeMap->FetchFrom(freeMapFile);
-//         unsigned newNumBytes = numBytes - (SECTOR_SIZE - raw.numBytes); //Take into account left-over bytes in last sector
+bool 
+FileHeader::Expand(unsigned numBytes) {
+    bool res = true;
+    if(raw.nextHeader != -1) {
+        FileHeader* header = new FileHeader;
+        header->FetchFrom(raw.nextHeader);
+        res = header->Expand(numBytes);
+        if(res) {
+            raw.numBytes = MAX_FILE_SIZE + header->FileLength();
+            raw.numSectors = DivRoundUp(raw.numBytes, SECTOR_SIZE)
+        }
+        header->WriteBack(raw.nextHeader);
+        delete header;
+    }else {
+        OpenFile* freeMapFile   = new OpenFile(FREE_MAP_SECTOR); //Podemos abrir de nuevo el freeMapFile (???)
+        Bitmap* freeMap = new Bitmap(NUM_SECTORS);
+        freeMap->FetchFrom(freeMapFile);
+        unsigned newNumBytes = numBytes - (SECTOR_SIZE - raw.numBytes); //Take into account left-over bytes in last sector
         
-//         if(newNumBytes <= 0) {
-//             raw.numBytes += numBytes;
-//             return true;
-//         }
-//         if (freeMap->CountClear() < DivRoundUp(numBytes, SECTOR_SIZE)) {
-//             return false;  // Not enough space.
-//         }
+        if(newNumBytes <= 0) {
+            raw.numBytes += numBytes; //Didn´t require new sector, use what we have
+            return true;
+        }
+        if (freeMap->CountClear() < DivRoundUp(newNumBytes, SECTOR_SIZE)) {
+            return false;  // Not enough space.
+        }
 
-//         unsigned int oldnumSectors = raw.numSectors;
-//         raw.numBytes = raw.numBytes + numBytes < MAX_FILE_SIZE ? raw.numBytes + numBytes : MAX_FILE_SIZE;
-//         const unsigned int sectores = DivRoundUp(newNumBytes, SECTOR_SIZE);
-//         raw.numSectors = sectores < NUM_DIRECT ? sectores : NUM_DIRECT;
+        unsigned int oldnumSectors = raw.numSectors;
+        raw.numBytes += newNumBytes;
+        raw.numSectors = DivRoundUp(raw.numBytes, SECTOR_SIZE);
 
-//         for (unsigned i = oldnumSectors + 1; i < raw.numSectors; i++) {
-//             raw.dataSectors[i] = freeMap->Find();
-//         }
+        for (unsigned i = oldnumSectors; i < raw.numSectors && i < NUM_DIRECT; i++) {
+            raw.dataSectors[i] = freeMap->Find();
+            DEBUG('f', "Expand found free sector n° %d\n", i);
+        }
 
-//         if (sectores > raw.numSectors - oldnumSectors) {
-//             raw.nextHeader = freeMap->Find();
-//             if (raw.nextHeader == -1)
-//                 return false;
+        if (raw.numBytes > NUM_DIRECT) {
+            raw.nextHeader = freeMap->Find();
+            if (raw.nextHeader == -1)
+                return false;
+            FileHeader* header = new FileHeader;
+            res = header->Allocate(freeMap, numBytes - (raw.numSectors - oldnumSectors)*SECTOR_SIZE);
+            header->raw.parent = false;
+            if (res)
+                header->WriteBack(raw.nextHeader);
 
-//             FileHeader* header = new FileHeader;
-//             res = header->Allocate(freeMap, numBytes - (NUM_DIRECT - (oldnumSectors + 1)) * SECTOR_SIZE);
-//             header->raw.parent = false;
-//             if (res)
-//                 header->WriteBack(raw.nextHeader);
+            delete header;
+        }
 
-//             delete header;
-//         }
+        freeMap->WriteBack(freeMapFile);
+    }
 
-//         freeMap->WriteBack(freeMapFile);
-//     }
-
-//     return res;
-// }
+    return res;
+}
 
 /// Initialize a fresh file header for a newly created file.  Allocate data
 /// blocks for the file out of the map of free disk blocks.  Return false if

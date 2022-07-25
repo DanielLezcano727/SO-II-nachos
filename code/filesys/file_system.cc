@@ -495,3 +495,14 @@ FileSystem::Print()
     delete freeMap;
     delete dir;
 }
+
+bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
+    ASSERT(hdr != nullptr);
+    ASSERT(size != 0);
+
+    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+    freeMap->FetchFrom(freeMapFile);
+    bool tmp = hdr->Expand(freeMap, size);
+    if(tmp) freeMap->WriteBack(freeMapFile);
+    return tmp;
+}

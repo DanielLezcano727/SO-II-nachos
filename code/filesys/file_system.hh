@@ -135,6 +135,8 @@ public:
     /// List all the files and their contents.
     void Print();
 
+    bool Expand(FileHeader* hdr, unsigned numBytes);
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.

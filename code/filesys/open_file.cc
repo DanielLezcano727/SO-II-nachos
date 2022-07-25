@@ -27,6 +27,7 @@ OpenFile::OpenFile(int sector)
     hdr = new FileHeader;
     hdr->FetchFrom(sector);
     seekPosition = 0;
+    hdrSector = sector;
 }
 
 /// Close a Nachos file, de-allocating any in-memory data structures.
@@ -155,10 +156,12 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     // if (position + numBytes > fileLength) numBytes = fileLength - position;
     if (position + numBytes > fileLength) {
         DEBUG('f', "Expand requested\n");
-        bool res = hdr->Expand(position + numBytes - fileLength);
+        DEBUG('f', "position: %u \numBytes: %u \nfileLength: %u \n Chau: %u\n", position, numBytes, fileLength, position + numBytes - fileLength);
+        bool res = fileSystem->Expand(hdr, position + numBytes - fileLength);
         if (!res) return 0;
+        hdr->WriteBack(hdrSector);
+        fileLength = hdr->FileLength();
     }
-    
     firstSector = DivRoundDown(position, SECTOR_SIZE);
     lastSector  = DivRoundDown(position + numBytes - 1, SECTOR_SIZE);
     numSectors  = 1 + lastSector - firstSector;

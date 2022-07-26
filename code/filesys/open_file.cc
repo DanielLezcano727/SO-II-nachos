@@ -121,8 +121,8 @@ OpenFile::ReadAt(char *into, unsigned numBytes, unsigned position)
     if (position + numBytes > fileLength) {
         numBytes = fileLength - position;
     }
-    DEBUG('f', "Reading %u bytes at %u, from file of length %u.\n",
-          numBytes, position, fileLength);
+    // DEBUG('f', "Reading %u bytes at %u, from file of length %u.\n",
+    //       numBytes, position, fileLength);
 
     firstSector = DivRoundDown(position, SECTOR_SIZE);
     lastSector = DivRoundDown(position + numBytes - 1, SECTOR_SIZE);
@@ -156,7 +156,6 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     // if (position + numBytes > fileLength) numBytes = fileLength - position;
     if (position + numBytes > fileLength) {
         DEBUG('f', "Expand requested\n");
-        DEBUG('f', "position: %u \numBytes: %u \nfileLength: %u \n Chau: %u\n", position, numBytes, fileLength, position + numBytes - fileLength);
         bool res = fileSystem->Expand(hdr, position + numBytes - fileLength);
         if (!res) return 0;
         hdr->WriteBack(hdrSector);

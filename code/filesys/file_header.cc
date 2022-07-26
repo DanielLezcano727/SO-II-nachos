@@ -29,8 +29,6 @@
 #include <ctype.h>
 #include <stdio.h>
 
-static const unsigned FREE_MAP_SECTOR = 0;
-
 bool 
 FileHeader::Expand(Bitmap* freeMap, unsigned numBytes) {
     bool res = true;
@@ -45,32 +43,33 @@ FileHeader::Expand(Bitmap* freeMap, unsigned numBytes) {
         header->WriteBack(raw.nextHeader);
         delete header;
     }else {
-        unsigned newNumBytes = numBytes - (SECTOR_SIZE * raw.numSectors - raw.numBytes); //Take into account left-over bytes in last sector
+        int newNumBytes = numBytes - (SECTOR_SIZE * raw.numSectors - raw.numBytes); //Take into account left-over bytes in last sector
         unsigned int oldnumSectors = raw.numSectors;
-        unsigned int oldnumBytes = raw.numBytes;
-        
         if(newNumBytes <= 0) {
+            DEBUG('f', "Another sector is not needed, adding %d bytes", numBytes);
             raw.numBytes += numBytes; //Didn´t require new sector, use what we have
             return true;
         }
-        if (freeMap->CountClear() < DivRoundUp(newNumBytes, SECTOR_SIZE)) {
+        if (freeMap->CountClear() < DivRoundUp((unsigned)newNumBytes, SECTOR_SIZE)) {
+            DEBUG('f', "Not enough space, denying expand request\n");
             return false;  // Not enough space.
         }
 
-        raw.numBytes += newNumBytes;
+        raw.numBytes += numBytes;
         raw.numSectors = DivRoundUp(raw.numBytes, SECTOR_SIZE);
 
-        for (unsigned i = oldnumSectors; i < raw.numSectors && i < NUM_DIRECT; i++) {
-            raw.dataSectors[i] = freeMap->Find(); // :(
-            DEBUG('f', "Expand found free sector n° %d\n", i);
+        unsigned lastSector;
+        for (lastSector = oldnumSectors; lastSector < raw.numSectors && lastSector < NUM_DIRECT; lastSector++) {
+            raw.dataSectors[lastSector] = freeMap->Find();
+            DEBUG('f', "Expand found free sector n° %d\n", raw.dataSectors[lastSector]);
         }
 
-        if (raw.numBytes > MAX_FILE_SIZE) { //De aca sale el error que pone todo en 0
+        if (raw.numBytes > MAX_FILE_SIZE) {
             raw.nextHeader = freeMap->Find();
             if (raw.nextHeader == -1)
                 return false;
             FileHeader* header = new FileHeader;
-            res = header->Allocate(freeMap, newNumBytes - (oldnumBytes % SECTOR_SIZE) - (raw.numSectors - oldnumSectors) * SECTOR_SIZE);
+            res = header->Allocate(freeMap, newNumBytes - (lastSector - oldnumSectors) * SECTOR_SIZE);
             header->raw.parent = false;
             if (res)
                 header->WriteBack(raw.nextHeader);
@@ -103,7 +102,6 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
     raw.nextHeader = -1;
     raw.numBytes = fileSize;
     raw.numSectors = DivRoundUp(fileSize, SECTOR_SIZE);
-    DEBUG('f', "Header values\nnumBytes = %d\nnumSectors = %d\n", raw.numBytes, raw.numSectors);
     for (unsigned i = 0; i < NUM_DIRECT; i++) 
                 raw.dataSectors[i] = 0;
 
@@ -125,7 +123,6 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
             return false;
         FileHeader* header = new FileHeader;
         success = header->Allocate(freeMap, fileSize - MAX_FILE_SIZE);
-        DEBUG('f', "One indirection in sector %d\n", raw.nextHeader);
         header->raw.parent = false;
         if (success)
             header->WriteBack(raw.nextHeader);
@@ -149,7 +146,6 @@ FileHeader::Deallocate(Bitmap *freeMap)
 
     if (raw.nextHeader != -1) {
         FileHeader* header = new FileHeader;
-        DEBUG('f', "FetchFrom Requested from Deallocate\n");
         header->FetchFrom(raw.nextHeader);
         header->Deallocate(freeMap);
         freeMap->Clear(raw.nextHeader);
@@ -186,7 +182,7 @@ FileHeader::WriteBack(unsigned sector)
 unsigned
 FileHeader::ByteToSector(unsigned offset)
 {
-    DEBUG('f', "ByteToSector with offset %d\n", offset);
+    // DEBUG('f', "ByteToSector with offset %d\n", offset);
     if (offset >= (NUM_DIRECT * SECTOR_SIZE)) {
         ASSERT(raw.nextHeader);
         DEBUG('f', "Sector out of current header, delegating request\n");

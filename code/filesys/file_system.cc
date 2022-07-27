@@ -130,12 +130,16 @@ FileSystem::FileSystem(bool format)
         freeMapFile   = new OpenFile(FREE_MAP_SECTOR);
         directoryFile = new OpenFile(DIRECTORY_SECTOR);
     }
+    idxTable = 0;
 }
 
 FileSystem::~FileSystem()
 {
     delete freeMapFile;
     delete directoryFile;
+    for(int i=0; i<idxTable; i++) {
+        delete tablaAbiertos[i];
+    }
 }
 
 /// Create a file in the Nachos file system (similar to UNIX `create`).
@@ -225,8 +229,23 @@ FileSystem::Open(const char *name)
     dir->FetchFrom(directoryFile);
     int sector = dir->Find(name);
     if (sector >= 0) {
-        openFile = new OpenFile(sector);  // `name` was found in directory.
+        int i;
+        for(i=0; i < idxTable && tablaAbiertos[i]->sector != sector; i++);
+        if (i < idxTable) {
+            if (!tablaAbiertos[i]->deleted)
+                tablaAbiertos[i]->usedBy++;
+        } else {
+            FileData *fd = new FileData;
+            fd->usedBy = 1;
+            fd->sector = sector;
+            fd->name = name;
+            fd->deleted = false;
+            tablaAbiertos[idxTable++] = fd;
+        }
+        if (!tablaAbiertos[i]->deleted)
+            openFile = new OpenFile(sector);  // `name` was found in directory.
     }
+
     delete dir;
     return openFile;  // Return null if not found.
 }
@@ -258,18 +277,24 @@ FileSystem::Remove(const char *name)
     FileHeader *fileH = new FileHeader;
     fileH->FetchFrom(sector);
 
-    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
-    freeMap->FetchFrom(freeMapFile);
+    for (int i=0; i<idxTable && tablaAbiertos[i] == sector; i++);
+    tablaAbiertos[i]->deleted = true;
 
-    fileH->Deallocate(freeMap);  // Remove data blocks.
-    freeMap->Clear(sector);      // Remove header block.
-    dir->Remove(name);
+    if (tablaAbiertos[i]->usedBy == 0) {
+        Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+        freeMap->FetchFrom(freeMapFile);
 
-    freeMap->WriteBack(freeMapFile);  // Flush to disk.
-    dir->WriteBack(directoryFile);    // Flush to disk.
+        fileH->Deallocate(freeMap);  // Remove data blocks.
+        freeMap->Clear(sector);      // Remove header block.
+        dir->Remove(name);
+
+        freeMap->WriteBack(freeMapFile);  // Flush to disk.
+        dir->WriteBack(directoryFile);    // Flush to disk.
+
+        delete freeMap;
+    }
     delete fileH;
     delete dir;
-    delete freeMap;
     return true;
 }
 

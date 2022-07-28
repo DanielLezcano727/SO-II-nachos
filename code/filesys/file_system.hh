@@ -103,9 +103,9 @@ static const unsigned FREE_MAP_FILE_SIZE = NUM_SECTORS / BITS_IN_BYTE;
 static const unsigned NUM_DIR_ENTRIES = 10;
 static const unsigned DIRECTORY_FILE_SIZE
   = sizeof (DirectoryEntry) * NUM_DIR_ENTRIES;
-static const MAX_FILE_AMMOUNT = 100;
+static const unsigned MAX_FILE_AMMOUNT = 100;
 typedef struct {
-    char* name;
+    const char* name;
     int sector;
     unsigned usedBy;
     bool deleted;

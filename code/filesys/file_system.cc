@@ -277,7 +277,8 @@ FileSystem::Remove(const char *name)
     FileHeader *fileH = new FileHeader;
     fileH->FetchFrom(sector);
 
-    for (int i=0; i<idxTable && tablaAbiertos[i] == sector; i++);
+    int i;
+    for (i=0; i<idxTable && tablaAbiertos[i]->sector == sector; i++);
     tablaAbiertos[i]->deleted = true;
 
     if (tablaAbiertos[i]->usedBy == 0) {
@@ -534,17 +535,17 @@ bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
     return tmp;
 }
 
-bool isDeleted(int sector) {
+bool FileSystem::isDeleted(int sector) {
     int i;
-    for (i=0; !tablaAbiertos[i]->sector == sector; i++);
+    for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
     return tablaAbiertos[i]->deleted;
 }
 
-void closeFile(int sector) {
+void FileSystem::closeFile(int sector) {
     int i;
-    for (i=0; !tablaAbiertos[i]->sector == sector; i++);
+    for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
     tablaAbiertos[i]->usedBy--;
     if(tablaAbiertos[i]->deleted) {
-        bool tmp = Remove(tablaAbiertos[i]->name);
+        bool tmp = remove(tablaAbiertos[i]->name);
     }
 }

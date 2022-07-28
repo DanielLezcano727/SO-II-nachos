@@ -33,6 +33,7 @@ OpenFile::OpenFile(int sector)
 /// Close a Nachos file, de-allocating any in-memory data structures.
 OpenFile::~OpenFile()
 {
+    fileSystem->closeFile(hdrSector);
     delete hdr;
 }
 
@@ -74,9 +75,11 @@ OpenFile::Write(const char *into, unsigned numBytes)
 {
     ASSERT(into != nullptr);
     ASSERT(numBytes > 0);
-
-    int result = WriteAt(into, numBytes, seekPosition);
-    seekPosition += result;
+    int result = false;
+    if(!fileSystem->isDeleted(hdrSector)) {
+        result = WriteAt(into, numBytes, seekPosition);
+        seekPosition += result;
+    }
     return result;
 }
 

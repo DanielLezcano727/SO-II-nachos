@@ -143,6 +143,10 @@ public:
 
     bool Expand(FileHeader* hdr, unsigned numBytes);
 
+    bool isDeleted(int sector);
+
+    void closeFile(int sector);
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.

@@ -286,13 +286,15 @@ FileSystem::Remove(const char *name)
 
         fileH->Deallocate(freeMap);  // Remove data blocks.
         freeMap->Clear(sector);      // Remove header block.
-        dir->Remove(name);
 
         freeMap->WriteBack(freeMapFile);  // Flush to disk.
-        dir->WriteBack(directoryFile);    // Flush to disk.
 
         delete freeMap;
     }
+
+    dir->Remove(name);
+    dir->WriteBack(directoryFile);    // Flush to disk.
+
     delete fileH;
     delete dir;
     return true;
@@ -530,4 +532,19 @@ bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
     bool tmp = hdr->Expand(freeMap, size);
     if(tmp) freeMap->WriteBack(freeMapFile);
     return tmp;
+}
+
+bool isDeleted(int sector) {
+    int i;
+    for (i=0; !tablaAbiertos[i]->sector == sector; i++);
+    return tablaAbiertos[i]->deleted;
+}
+
+void closeFile(int sector) {
+    int i;
+    for (i=0; !tablaAbiertos[i]->sector == sector; i++);
+    tablaAbiertos[i]->usedBy--;
+    if(tablaAbiertos[i]->deleted) {
+        bool tmp = Remove(tablaAbiertos[i]->name);
+    }
 }

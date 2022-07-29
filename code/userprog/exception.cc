@@ -342,6 +342,18 @@ SyscallHandler(ExceptionType _et)
             break;
         }
 
+        case SC_CD: {
+            DEBUG('e', "cd requested\n");
+            
+            break;
+        }
+
+        case SC_LS: {
+            DEBUG('e', "ls requested\n");
+            
+            break;
+        }
+
         default:
             fprintf(stderr, "Unexpected system call: id %d.\n", scid);
             ASSERT(false);

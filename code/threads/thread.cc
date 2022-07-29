@@ -58,6 +58,9 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     fileTable->Add(nullptr); // CONSOLE_INPUT
     fileTable->Add(nullptr); // CONSOLE_OUTPUT
 #endif
+#ifdef FILE_SYSTEM
+    currentDirFile = fileSystem->getDir("/");
+#endif
 }
 
 /// De-allocate a thread.
@@ -355,4 +358,17 @@ Thread::RestoreUserState()
     }
 }
 
+#endif
+
+#ifdef FILE_SYSTEM
+void
+Thread::Cd(char* path) {
+    if(fileSystem->validPath(path))
+        currentThread->currentDirFile = fileSystem->Cd(path);
+}
+
+void
+Thread::Ls() {
+    currentThread->currentDirFile->List();
+}
 #endif

@@ -538,7 +538,8 @@ FileSystem::Print()
     delete dir;
 }
 
-bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
+bool 
+FileSystem::Expand(FileHeader *hdr, unsigned size) {
     ASSERT(hdr != nullptr);
     ASSERT(size != 0);
 
@@ -551,7 +552,8 @@ bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
     return tmp;
 }
 
-bool FileSystem::isDeleted(int sector) {
+bool
+FileSystem::isDeleted(int sector) {
     lockTablaAbiertos->Acquire();
     int i;
     for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
@@ -560,7 +562,8 @@ bool FileSystem::isDeleted(int sector) {
     return tmp;
 }
 
-void FileSystem::closeFile(int sector) {
+void 
+FileSystem::closeFile(int sector) {
     lockTablaAbiertos->Acquire();
     int i;
     for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
@@ -570,4 +573,20 @@ void FileSystem::closeFile(int sector) {
     }
     lockTablaAbiertos->Release();
 
+}
+
+bool 
+validPath(char* path) {
+    // path = /foo/bar/file
+
+    // workingDir = / (open root dir)
+    // for directory in path
+    // workingDir->Find(name)
+    // load new workingDir (fetch from sector)
+    // return found
+}
+
+OpenFile*
+Cd(char* path) {
+    // reconsider if validPath is necessary since Cd code would be (too) similar
 }

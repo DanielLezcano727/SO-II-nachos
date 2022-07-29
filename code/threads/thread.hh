@@ -152,6 +152,10 @@ private:
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);
 
+#ifdef FILE_SYSTEM
+    OpenFile* currentDirFile;
+#endif
+
 #ifdef USER_PROGRAM
     /// User-level CPU register state.
     ///

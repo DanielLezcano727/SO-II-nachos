@@ -149,6 +149,10 @@ public:
 
     void closeFile(int sector);
 
+    bool validPath(char* path);
+
+    OpenFile* Cd(char* path);
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.

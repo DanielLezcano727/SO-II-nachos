@@ -94,7 +94,7 @@ public:
 
 #include "directory_entry.hh"
 #include "machine/disk.hh"
-
+#include "threads/lock.hh"
 
 /// Initial file sizes for the bitmap and directory; until the file system
 /// supports extensible files, the directory size sets the maximum number of
@@ -108,7 +108,9 @@ typedef struct {
     const char* name;
     int sector;
     unsigned usedBy;
+    // Lock *lock;
     bool deleted;
+    // bool isDirectory;
 } FileData;
 
 class FileSystem {
@@ -154,6 +156,9 @@ private:
                               ///< represented as a file.
     int idxTable;
     FileData *tablaAbiertos[MAX_FILE_AMMOUNT];
+
+    Lock *lockTablaAbiertos;
+    Lock *lockMapDir;
 };
 
 #endif

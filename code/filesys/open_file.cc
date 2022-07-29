@@ -76,10 +76,8 @@ OpenFile::Write(const char *into, unsigned numBytes)
     ASSERT(into != nullptr);
     ASSERT(numBytes > 0);
     int result = false;
-    if(!fileSystem->isDeleted(hdrSector)) {
-        result = WriteAt(into, numBytes, seekPosition);
-        seekPosition += result;
-    }
+    result = WriteAt(into, numBytes, seekPosition);
+    seekPosition += result;
     return result;
 }
 

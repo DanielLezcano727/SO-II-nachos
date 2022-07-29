@@ -131,12 +131,16 @@ FileSystem::FileSystem(bool format)
         directoryFile = new OpenFile(DIRECTORY_SECTOR);
     }
     idxTable = 0;
+    lockTablaAbiertos = new Lock("Lock tabla abiertos");
+    lockMapDir = new Lock("Lock freeMap and Directory");
 }
 
 FileSystem::~FileSystem()
 {
     delete freeMapFile;
     delete directoryFile;
+    delete lockTablaAbiertos;
+    delete lockMapDir;
     for(int i=0; i<idxTable; i++) {
         delete tablaAbiertos[i];
     }
@@ -174,7 +178,7 @@ FileSystem::Create(const char *name, unsigned initialSize)
     // ASSERT(initialSize < MAX_FILE_SIZE);
 
     DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
-
+    lockMapDir->Acquire();
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     dir->FetchFrom(directoryFile);
 
@@ -201,11 +205,13 @@ FileSystem::Create(const char *name, unsigned initialSize)
                 h->WriteBack(sector);
                 dir->WriteBack(directoryFile);
                 freeMap->WriteBack(freeMapFile);
+                //
             }
             delete h;
         }
         delete freeMap;
     }
+    lockMapDir->Release();
     delete dir;
     return success;
 }
@@ -230,6 +236,8 @@ FileSystem::Open(const char *name)
     int sector = dir->Find(name);
     if (sector >= 0) {
         int i;
+        lockTablaAbiertos->Acquire();
+
         for(i=0; i < idxTable && tablaAbiertos[i]->sector != sector; i++);
         if (i < idxTable) {
             if (!tablaAbiertos[i]->deleted)
@@ -244,6 +252,8 @@ FileSystem::Open(const char *name)
         }
         if (!tablaAbiertos[i]->deleted)
             openFile = new OpenFile(sector);  // `name` was found in directory.
+
+        lockTablaAbiertos->Release();
     }
 
     delete dir;
@@ -267,6 +277,7 @@ FileSystem::Remove(const char *name)
 {
     ASSERT(name != nullptr);
 
+    lockMapDir->Acquire();
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     dir->FetchFrom(directoryFile);
     int sector = dir->Find(name);
@@ -278,10 +289,11 @@ FileSystem::Remove(const char *name)
     fileH->FetchFrom(sector);
 
     int i;
+    lockTablaAbiertos->Acquire();
     for (i=0; i<idxTable && tablaAbiertos[i]->sector == sector; i++);
     tablaAbiertos[i]->deleted = true;
 
-    if (tablaAbiertos[i]->usedBy == 0) {
+    if (tablaAbiertos[i]->usedBy == 0) { // Habria que borrar la entrada de la tabla de abiertos? (y modificar la busqueda de entradas libres)
         Bitmap *freeMap = new Bitmap(NUM_SECTORS);
         freeMap->FetchFrom(freeMapFile);
 
@@ -292,10 +304,12 @@ FileSystem::Remove(const char *name)
 
         delete freeMap;
     }
+    lockTablaAbiertos->Release();
 
     dir->Remove(name);
     dir->WriteBack(directoryFile);    // Flush to disk.
 
+    lockMapDir->Release();
     delete fileH;
     delete dir;
     return true;
@@ -528,24 +542,32 @@ bool FileSystem::Expand(FileHeader *hdr, unsigned size) {
     ASSERT(hdr != nullptr);
     ASSERT(size != 0);
 
+    lockMapDir->Acquire();
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
     freeMap->FetchFrom(freeMapFile);
     bool tmp = hdr->Expand(freeMap, size);
     if(tmp) freeMap->WriteBack(freeMapFile);
+    lockMapDir->Release();
     return tmp;
 }
 
 bool FileSystem::isDeleted(int sector) {
+    lockTablaAbiertos->Acquire();
     int i;
     for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
-    return tablaAbiertos[i]->deleted;
+    bool tmp = tablaAbiertos[i]->deleted;
+    lockTablaAbiertos->Release();
+    return tmp;
 }
 
 void FileSystem::closeFile(int sector) {
+    lockTablaAbiertos->Acquire();
     int i;
     for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
     tablaAbiertos[i]->usedBy--;
     if(tablaAbiertos[i]->deleted) {
-        bool tmp = remove(tablaAbiertos[i]->name);
+        Remove(tablaAbiertos[i]->name);
     }
+    lockTablaAbiertos->Release();
+
 }

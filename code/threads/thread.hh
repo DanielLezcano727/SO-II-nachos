@@ -133,6 +133,12 @@ public:
 
     void Join();
 
+#ifdef FILESYS
+    void Cd(char* path);
+
+    void Ls();
+#endif
+
 private:
     // Some of the private data for this class is listed above.
 
@@ -152,8 +158,8 @@ private:
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);
 
-#ifdef FILE_SYSTEM
-    OpenFile* currentDirFile;
+#ifdef FILESYS
+    int currentDirSector;
 #endif
 
 #ifdef USER_PROGRAM

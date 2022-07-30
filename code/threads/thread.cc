@@ -21,10 +21,10 @@
 #include "switch.h"
 #include "system.hh"
 #include "channel.hh"
+// #include "filesys/file_system.hh"
 
 #include <inttypes.h>
 #include <stdio.h>
-
 
 /// This is put at the top of the execution stack, for detecting stack
 /// overflows.
@@ -58,8 +58,8 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     fileTable->Add(nullptr); // CONSOLE_INPUT
     fileTable->Add(nullptr); // CONSOLE_OUTPUT
 #endif
-#ifdef FILE_SYSTEM
-    currentDirFile = fileSystem->getDir("/");
+#ifdef FILESYS
+    currentDirSector = 1; // woo magic numbers
 #endif
 }
 
@@ -360,16 +360,17 @@ Thread::RestoreUserState()
 
 #endif
 
-#ifdef FILE_SYSTEM
+#ifdef FILESYS
 void
 Thread::Cd(char* path) {
     int sector = fileSystem->Cd(path);
-    if(sector != -1)
-        currentThread->currentDirFile = new OpenFile(sector);
+    if(sector != -1) {
+        currentThread->currentDirSector = sector;
+    }
 }
 
 void
 Thread::Ls() {
-    currentThread->currentDirFile->List();
+    fileSystem->List(currentThread->currentDirSector);
 }
 #endif

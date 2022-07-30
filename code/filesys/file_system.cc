@@ -575,18 +575,40 @@ FileSystem::closeFile(int sector) {
 
 }
 
-bool 
-validPath(char* path) {
-    // path = /foo/bar/file
-
-    // workingDir = / (open root dir)
-    // for directory in path
-    // workingDir->Find(name)
-    // load new workingDir (fetch from sector)
-    // return found
-}
-
-OpenFile*
+// path = /foo/bar/file
+// workingDir = / (open root dir)
+// for directory in path
+// workingDir->Find(name)
+// load new workingDir (fetch from sector)
+// return found
+int
 Cd(char* path) {
-    // reconsider if validPath is necessary since Cd code would be (too) similar
+    OpenFile* workingDir = directoryFile;
+    int sector = 0;
+
+    char* directories[100]; // wooo magic numbers
+    char buff[20];
+
+    int q=0;
+    for(int j=1, int k=0; j<strlen(path); j++, k++) {
+        if(path[j]!='/') {
+            buff[k]=path[j];
+        }else {
+            directories[q] = new char[20];
+            strcpy(directories[q], buff);
+            q++;
+            k=0;
+        }
+    }
+    directories[q] = new char[20];
+    strcpy(directories[q], buff);
+
+    for(i=0; directories[i]!="\0" && sector!=-1; i++) {
+        sector = workingDir->Find(directories[i]);
+        if(sector!=-1) {
+            workingDir = new OpenFile(sector);
+        }
+    }
+
+    return sector;
 }

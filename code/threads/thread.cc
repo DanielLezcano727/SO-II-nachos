@@ -363,8 +363,9 @@ Thread::RestoreUserState()
 #ifdef FILE_SYSTEM
 void
 Thread::Cd(char* path) {
-    if(fileSystem->validPath(path))
-        currentThread->currentDirFile = fileSystem->Cd(path);
+    int sector = fileSystem->Cd(path);
+    if(sector != -1)
+        currentThread->currentDirFile = new OpenFile(sector);
 }
 
 void

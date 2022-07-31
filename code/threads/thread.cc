@@ -362,15 +362,14 @@ Thread::RestoreUserState()
 
 #ifdef FILESYS
 void
-Thread::Cd(char* path) {
-    int sector = fileSystem->Cd(path);
+Thread::Cd(int sector) {
     if(sector != -1) {
         currentThread->currentDirSector = sector;
     }
 }
 
-void
-Thread::Ls() {
-    fileSystem->List(currentThread->currentDirSector);
+int
+Thread::GetCurrentDir() {
+    return currentThread->currentDirSector;
 }
 #endif

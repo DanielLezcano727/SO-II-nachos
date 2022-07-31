@@ -347,7 +347,7 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "cd requested\n");
                 int pathDir = machine->ReadRegister(4);
                 char *path = readFilename(pathDir);
-                currentThread->Cd(path);
+                currentThread->Cd(fileSystem->Cd(path));
             #endif
             break;
         }
@@ -355,7 +355,7 @@ SyscallHandler(ExceptionType _et)
         case SC_LS: {
             #ifdef FILESYS
                 DEBUG('e', "ls requested\n");
-                currentThread->Ls();
+                fileSystem->Ls();
             #endif
             DEBUG('e', "ls :(\n");
             break;

@@ -134,9 +134,8 @@ public:
     void Join();
 
 #ifdef FILESYS
-    void Cd(char* path);
-
-    void Ls();
+    void Cd(int sector);
+    int GetCurrentDir();
 #endif
 
 private:

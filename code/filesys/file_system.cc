@@ -46,6 +46,7 @@
 #include "directory.hh"
 #include "file_header.hh"
 #include "lib/bitmap.hh"
+#include "threads/system.hh"
 
 #include <stdio.h>
 #include <string.h>
@@ -582,7 +583,7 @@ FileSystem::closeFile(int sector) {
 }
 
 int
-Cd(char* path) {
+FileSystem::Cd(char* path) {
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
     int sector = 0;
@@ -616,4 +617,17 @@ Cd(char* path) {
     delete workingDir;
 
     return sector;
+}
+
+void
+FileSystem::Ls() {
+    DEBUG('e', "Ls reached FileSystem\n");
+    Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
+    dir->FetchFrom(workingDir);
+    DEBUG('e', "Ls passed GetCurrentDir\n");
+    dir->List();
+    DEBUG('e', "Ls passed List\n");
+    delete dir;
+    delete workingDir;
 }

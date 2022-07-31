@@ -159,6 +159,8 @@ public:
 
     int Cd(char* path);
 
+    void Ls();
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.

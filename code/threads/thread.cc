@@ -30,7 +30,6 @@
 /// overflows.
 const unsigned STACK_FENCEPOST = 0xDEADBEEF;
 
-
 static inline bool
 IsThreadStatus(ThreadStatus s)
 {
@@ -59,7 +58,7 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     fileTable->Add(nullptr); // CONSOLE_OUTPUT
 #endif
 #ifdef FILESYS
-    currentDirSector = 1; // woo magic numbers
+    currentDirSector = DIRECTORY_SECTOR;
 #endif
 }
 

@@ -624,9 +624,11 @@ FileSystem::Ls() {
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
     dir->FetchFrom(workingDir);
+
     DEBUG('e', "Ls passed GetCurrentDir\n");
     dir->List();
     DEBUG('e', "Ls passed List\n");
+
     delete dir;
     delete workingDir;
 }
@@ -634,11 +636,34 @@ FileSystem::Ls() {
 void
 FileSystem::Mkdir(char* name) {
     DEBUG('e', "Mkdir reached FileSystem\n");
+
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
     freeMap->FetchFrom(freeMapFile);
+    int hdrSector = freeMap->Find();
+    freeMap->WriteBack(freeMapFile);
+    DEBUG('e', "Found free sector for directory header\n");
 
-    Directory  *dir     = new Directory(NUM_DIR_ENTRIES);
-    FileHeader *dirH    = new FileHeader;
+    FileHeader *dirH = new FileHeader;
     dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE);
-    Create(name, DIRECTORY_FILE_SIZE, currentThread->GetCurrentDir(), true);
+    dirH->WriteBack(hdrSector);
+    DEBUG('e', "Created and stored directory header\n");
+    delete freeMap;
+    delete dirH;
+
+    Directory *currentDir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *currentDirFile = new OpenFile(currentThread->GetCurrentDir());
+    currentDir->FetchFrom(currentDirFile);
+    currentDir->Add(name, hdrSector);
+    currentDir->WriteBack(currentDirFile);
+    DEBUG('e', "Added entry for new directory\n");
+    delete currentDir;
+    delete currentDirFile;
+
+    Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *directoryFile = new OpenFile(hdrSector);
+    dir->WriteBack(directoryFile);
+    DEBUG('e', "Directory created and stored to disk\n");
+    delete dir;
+
+    DEBUG('e', "Finished mkdir request\n");
 }

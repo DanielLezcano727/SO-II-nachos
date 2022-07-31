@@ -35,6 +35,7 @@
 #define SC_SP      17
 #define SC_CD      18
 #define SC_LS      19
+#define SC_MKDIR   20
 
 
 #ifndef IN_ASM
@@ -130,7 +131,9 @@ int Close(OpenFileId id);
 
 int Ls();
 
-int Cd();
+int Cd(char *path);
+
+int Mkdir(char *name);
 
 #endif
 

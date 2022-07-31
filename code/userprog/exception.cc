@@ -357,7 +357,16 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "ls requested\n");
                 fileSystem->Ls();
             #endif
-            DEBUG('e', "ls :(\n");
+            break;
+        }
+
+        case SC_MKDIR: {
+            #ifdef FILESYS
+                DEBUG('e', "mkdir requested\n");
+                int nameAddr = machine->ReadRegister(4);
+                char *name = readFilename(nameAddr);
+                fileSystem->Mkdir(name);
+            #endif
             break;
         }
 

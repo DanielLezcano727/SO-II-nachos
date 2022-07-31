@@ -134,7 +134,7 @@ public:
     ~FileSystem();
 
     /// Create a file (UNIX `creat`).
-    bool Create(const char *name, unsigned initialSize, int sector = DIRECTORY_SECTOR);
+    bool Create(const char *name, unsigned initialSize, int sector = DIRECTORY_SECTOR, bool isDir = false);
 
     /// Open a file (UNIX `open`).
     OpenFile *Open(const char *name, int sector = DIRECTORY_SECTOR);
@@ -160,6 +160,8 @@ public:
     int Cd(char* path);
 
     void Ls();
+
+    void Mkdir(char* name);
 
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a

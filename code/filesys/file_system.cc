@@ -166,10 +166,9 @@ FileSystem::~FileSystem()
 /// * `name` is the name of file to be created.
 /// * `initialSize` is the size of file to be created.
 bool
-FileSystem::Create(const char *name, unsigned initialSize, int sector)
+FileSystem::Create(const char *name, unsigned initialSize, int sector, bool isDir)
 {
     ASSERT(name != nullptr);
-    // ASSERT(initialSize < MAX_FILE_SIZE);
     DEBUG('f', "Sector %u\n", sector);
 
     DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
@@ -630,4 +629,16 @@ FileSystem::Ls() {
     DEBUG('e', "Ls passed List\n");
     delete dir;
     delete workingDir;
+}
+
+void
+FileSystem::Mkdir(char* name) {
+    DEBUG('e', "Mkdir reached FileSystem\n");
+    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+    freeMap->FetchFrom(freeMapFile);
+
+    Directory  *dir     = new Directory(NUM_DIR_ENTRIES);
+    FileHeader *dirH    = new FileHeader;
+    dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE);
+    Create(name, DIRECTORY_FILE_SIZE, currentThread->GetCurrentDir(), true);
 }

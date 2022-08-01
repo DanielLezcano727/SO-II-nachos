@@ -166,7 +166,7 @@ FileSystem::~FileSystem()
 /// * `name` is the name of file to be created.
 /// * `initialSize` is the size of file to be created.
 bool
-FileSystem::Create(const char *name, unsigned initialSize, int sector, bool isDir)
+FileSystem::Create(const char *name, unsigned initialSize, int sector)
 {
     ASSERT(name != nullptr);
     DEBUG('f', "Sector %u\n", sector);
@@ -585,35 +585,56 @@ int
 FileSystem::Cd(char* path) {
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
-    int sector = 0;
+    int sector = 1;
 
     char* directories[MAX_FILE_AMMOUNT];
-    char buff[FILE_NAME_MAX_LEN];
+    char buff[256]; // woo magic numbers
+    char largo = strlen(path);
+    int ammountDirectories = 1;
+    strcpy(buff, path);
+    char *dirName = strtok(buff, "/");
 
-    int existingDirs=0;
-    for(int j=1, k=0; j<strlen(path); j++, k++) {
-        if(path[j]!='/') {
-            buff[k]=path[j];
-        }else {
-            directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
-            strcpy(directories[existingDirs], buff);
-            existingDirs++;
-            k=0;
-        }
-    }
-    directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
-    strcpy(directories[existingDirs], buff);
-
-    for(int i=0; i<existingDirs && sector!=-1; i++) {
+    for(int i=0; dirName != NULL && sector != -1; i++) {
         dir->FetchFrom(workingDir);
-        sector = dir->Find(directories[i]);
+        sector = dir->Find(dirName);
         if(sector!=-1) {
             delete workingDir;
-            workingDir = new OpenFile(sector);
+            dirName = strtok(NULL, "/"); //Chequear que pasa si la cosa se corta aca
+            if (dirName != NULL)
+                workingDir = new OpenFile(sector);
         }
     }
     delete dir;
-    delete workingDir;
+
+    /* La sgte version tiene algunos problemas */
+    // int existingDirs=0;
+    // /* Split path in directories */
+    // for(int j=1, k=0; j<strlen(path); j++, k++) {
+    //     if(path[j]!='/') {
+    //         buff[k]=path[j];
+    //     }else {
+    //         directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
+    //         strcpy(directories[existingDirs], buff);
+    //         existingDirs++;
+    //         k=0;
+    //     }
+    // }
+    // for (int i=0; i<existingDirs; i++)
+    //     DEBUG('e', "Directories: %s\n", directories[i]);
+
+    // directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
+    // strcpy(directories[existingDirs], buff);
+
+    // for(int i=0; i<existingDirs && sector!=-1; i++) {
+    //     dir->FetchFrom(workingDir);
+    //     sector = dir->Find(directories[i]);
+    //     if(sector!=-1) {
+    //         delete workingDir;
+    //         workingDir = new OpenFile(sector);
+    //     }
+    // }
+    // delete dir;
+    // delete workingDir;
 
     return sector;
 }

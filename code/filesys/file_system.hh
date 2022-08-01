@@ -134,7 +134,7 @@ public:
     ~FileSystem();
 
     /// Create a file (UNIX `creat`).
-    bool Create(const char *name, unsigned initialSize, int sector = DIRECTORY_SECTOR, bool isDir = false);
+    bool Create(const char *name, unsigned initialSize, int sector = DIRECTORY_SECTOR);
 
     /// Open a file (UNIX `open`).
     OpenFile *Open(const char *name, int sector = DIRECTORY_SECTOR);

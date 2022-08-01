@@ -3,13 +3,15 @@
 int
 main(int argc, char *argv[])
 {
-    Ls();
-    Write(&"-\n", 2, CONSOLE_OUTPUT);
+//    Write(&"-\n", 2, CONSOLE_OUTPUT);
     Mkdir("foo");
     Cd("foo");
-    Ls();
-    Write(&"a\n", 2, CONSOLE_OUTPUT);
     Mkdir("bar");
+    Cd("foo/bar");
+    Mkdir("sad");
+    Ls();
+    Write(&"-\n", 2, CONSOLE_OUTPUT);
+    Cd("foo");
     Ls();
 
     return 0;

@@ -365,7 +365,8 @@ SyscallHandler(ExceptionType _et)
                 DEBUG('e', "mkdir requested\n");
                 int nameAddr = machine->ReadRegister(4);
                 char *name = readFilename(nameAddr);
-                fileSystem->Mkdir(name);
+                bool res = fileSystem->Mkdir(name);
+                DEBUG('e', "mkdir res: %d\n", res);
             #endif
             break;
         }

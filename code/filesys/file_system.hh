@@ -161,7 +161,7 @@ public:
 
     void Ls();
 
-    void Mkdir(char* name);
+    bool Mkdir(char* name);
 
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a

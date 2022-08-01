@@ -633,37 +633,53 @@ FileSystem::Ls() {
     delete workingDir;
 }
 
-void
+bool
 FileSystem::Mkdir(char* name) {
     DEBUG('e', "Mkdir reached FileSystem\n");
 
+    /* Buscamos si hay espacio para guardar el header */
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
     freeMap->FetchFrom(freeMapFile);
+
     int hdrSector = freeMap->Find();
-    freeMap->WriteBack(freeMapFile);
+    if (hdrSector == -1) {
+        return false;
+    }
     DEBUG('e', "Found free sector for directory header\n");
 
+    /* Reservamos el espacio del nuevo directorio en disco */
     FileHeader *dirH = new FileHeader;
-    dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE);
-    dirH->WriteBack(hdrSector);
+    if (!dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE)) {
+        return false;
+    }
     DEBUG('e', "Created and stored directory header\n");
-    delete freeMap;
-    delete dirH;
 
+    /* Agregamos el directorio como sub directorio del actual */
     Directory *currentDir = new Directory(NUM_DIR_ENTRIES);
     OpenFile *currentDirFile = new OpenFile(currentThread->GetCurrentDir());
+
     currentDir->FetchFrom(currentDirFile);
-    currentDir->Add(name, hdrSector);
-    currentDir->WriteBack(currentDirFile);
+    if(!currentDir->Add(name, hdrSector)) {
+        return false;
+    }
     DEBUG('e', "Added entry for new directory\n");
+
+    /* Guardamos los cambios en el disco */
+    currentDir->WriteBack(currentDirFile);
+    freeMap->WriteBack(freeMapFile);
+    dirH->WriteBack(hdrSector);
+
+    delete freeMap;
+    delete dirH;
     delete currentDir;
     delete currentDirFile;
-
+    /* Me parece que esto no hace nada
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile *directoryFile = new OpenFile(hdrSector);
     dir->WriteBack(directoryFile);
     DEBUG('e', "Directory created and stored to disk\n");
     delete dir;
-
+    */
     DEBUG('e', "Finished mkdir request\n");
+    return true;
 }

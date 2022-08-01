@@ -124,7 +124,8 @@ main(void)
             SpaceId newProc = Exec(argv[0], argv, 0);
         } else {
             SpaceId newProc = Exec(argv[0], argv, 1);
-            Join(newProc);
+            if(newProc != -1)
+                Join(newProc);
         }
         //const SpaceId newProc = Exec(line, argv);
 

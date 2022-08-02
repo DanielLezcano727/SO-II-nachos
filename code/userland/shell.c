@@ -43,7 +43,7 @@ ReadLine(char *buffer, unsigned size, OpenFileId input)
     // TODO: how to make sure that `buffer` is not `NULL`?
 
     unsigned i;
-
+    
     for (i = 0; i < size; i++) {
         Read(&buffer[i], 1, input);
         // TODO: what happens when the input ends?
@@ -108,6 +108,7 @@ main(void)
     for (;;) {
         WritePrompt(OUTPUT);
         const unsigned lineSize = ReadLine(line, MAX_LINE_SIZE, INPUT);
+
         if (lineSize == 0) {
             continue;
         }

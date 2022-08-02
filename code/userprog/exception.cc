@@ -170,9 +170,7 @@ SyscallHandler(ExceptionType _et)
             }else {
                 DEBUG('e', "Abnormal exit\n");
             }
-
-            // EXIT pide pasar el estado segun syscall.h pero nuestra implementación de join no recibe dicho estado
-            // probablemente está mal pero no tenemos la corrección del mismo.
+            
             currentThread->Finish();
             break;
         }

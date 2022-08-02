@@ -94,7 +94,6 @@ public:
 
 #include "directory_entry.hh"
 #include "machine/disk.hh"
-// #include "threads/lock.hh"
 
 /// Initial file sizes for the bitmap and directory; until the file system
 /// supports extensible files, the directory size sets the maximum number of
@@ -105,6 +104,7 @@ static const unsigned DIRECTORY_FILE_SIZE
   = sizeof (DirectoryEntry) * NUM_DIR_ENTRIES;
 static const unsigned MAX_FILE_AMMOUNT = 100;
 
+class Lock; // Forward declaration of Locks
 
 /// Sectors containing the file headers for the bitmap of free sectors, and
 /// the directory of files.  These file headers are placed in well-known
@@ -116,9 +116,8 @@ typedef struct {
     const char* name;
     int sector;
     unsigned usedBy;
-    // Lock *lock;
+    Lock *lock;
     bool deleted;
-    // bool isDirectory;
 } FileData;
 
 class FileSystem {
@@ -153,8 +152,6 @@ public:
 
     bool Expand(FileHeader* hdr, unsigned numBytes);
 
-    bool isDeleted(int sector);
-
     void closeFile(int sector);
 
     int Cd(char* path);
@@ -171,8 +168,8 @@ private:
     int idxTable;
     FileData *tablaAbiertos[MAX_FILE_AMMOUNT];
 
-    // Lock *lockTablaAbiertos;
-    // Lock *lockMapDir;
+    Lock *lockTablaAbiertos;
+    Lock *lockFreeMap;
 };
 
 #endif

@@ -47,6 +47,7 @@
 #include "file_header.hh"
 #include "lib/bitmap.hh"
 #include "threads/system.hh"
+#include "threads/lock.hh"
 
 #include <stdio.h>
 #include <string.h>
@@ -125,16 +126,16 @@ FileSystem::FileSystem(bool format)
         freeMapFile   = new OpenFile(FREE_MAP_SECTOR);
         // directoryFile = new OpenFile(DIRECTORY_SECTOR);
     }
-    // lockTablaAbiertos = new Lock("Lock tabla abiertos");
-    // lockMapDir = new Lock("Lock freeMap and Directory");
+    lockTablaAbiertos = new Lock("Lock tabla abiertos");
+    lockFreeMap = new Lock("Lock freeMap and Directory");
 }
 
 FileSystem::~FileSystem()
 {
     delete freeMapFile;
     // delete directoryFile;
-    // delete lockTablaAbiertos;
-    // delete lockMapDir;
+    delete lockTablaAbiertos;
+    delete lockFreeMap;
     for(int i=0; i<idxTable; i++) {
         delete tablaAbiertos[i];
     }
@@ -172,8 +173,9 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
     DEBUG('f', "Sector %u\n", sector);
 
     DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
-    // lockMapDir->Acquire();
-    OpenFile *directoryFile = new OpenFile(sector);
+    lockFreeMap->Acquire();
+    // OpenFile *directoryFile = new OpenFile(sector);
+    OpenFile *directoryFile = Open("directory", sector);
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     dir->FetchFrom(directoryFile);
 
@@ -206,9 +208,10 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
         }
         delete freeMap;
     }
-    // lockMapDir->Release();
+    lockFreeMap->Release();
     delete dir;
-    delete directoryFile;
+    // delete directoryFile;
+    closeFile(sector);
     return success;
 }
 
@@ -227,13 +230,13 @@ FileSystem::Open(const char *name, int sector)
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile  *openFile = nullptr;
 
-    DEBUG('f', "Opening file %s\n", name);
+    DEBUG('f', "Opening file %s from sector %d\n", name, sector);
     OpenFile *directoryFile = new OpenFile(sector);
     dir->FetchFrom(directoryFile);
     int fileSector = dir->Find(name);
     if (fileSector >= 0) {
         int i;
-        // lockTablaAbiertos->Acquire();
+        lockTablaAbiertos->Acquire();
 
         for(i=0; i < idxTable && tablaAbiertos[i]->sector != fileSector; i++);
         if (i < idxTable) {
@@ -247,11 +250,16 @@ FileSystem::Open(const char *name, int sector)
             fd->deleted = false;
             tablaAbiertos[idxTable] = fd;
             idxTable++;
+            if (strcmp(name, "directory")==0) {
+                fd->lock = new Lock("directory lock");
+            }else {
+                fd->lock = nullptr;
+            }
         }
         if (!tablaAbiertos[i]->deleted)
             openFile = new OpenFile(fileSector);  // `name` was found in directory.
 
-        // lockTablaAbiertos->Release();
+        lockTablaAbiertos->Release();
     }
 
     delete dir;
@@ -276,9 +284,10 @@ FileSystem::Remove(const char *name, int sector)
 {
     ASSERT(name != nullptr);
 
-    // lockMapDir->Acquire();
+    lockFreeMap->Acquire();
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile *directoryFile = new OpenFile(sector);
+    // OpenFile *directoryFile = new OpenFile(sector);
+    OpenFile *directoryFile = Open("directory", sector);
     dir->FetchFrom(directoryFile);
     int fileSector = dir->Find(name);
     if (fileSector == -1) {
@@ -289,7 +298,7 @@ FileSystem::Remove(const char *name, int sector)
     fileH->FetchFrom(fileSector);
 
     int i;
-    // lockTablaAbiertos->Acquire();
+    lockTablaAbiertos->Acquire();
     for (i=0; i<idxTable && tablaAbiertos[i]->sector == fileSector; i++);
     tablaAbiertos[i]->deleted = true;
 
@@ -304,13 +313,14 @@ FileSystem::Remove(const char *name, int sector)
 
         delete freeMap;
     }
-    // lockTablaAbiertos->Release();
+    lockTablaAbiertos->Release();
 
     dir->Remove(name);
     dir->WriteBack(directoryFile);    // Flush to disk.
 
-    // lockMapDir->Release();
-    delete directoryFile;
+    lockFreeMap->Release();
+    // delete directoryFile;
+    closeFile(sector);
     delete fileH;
     delete dir;
     return true;
@@ -321,11 +331,13 @@ void
 FileSystem::List(int sector)
 {
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile *directoryFile = new OpenFile(sector);
+    // OpenFile *directoryFile = new OpenFile(sector);
+    OpenFile *directoryFile = Open("directory", sector);
 
     dir->FetchFrom(directoryFile);
     dir->List();
-    delete directoryFile;
+    // delete directoryFile;
+    closeFile(sector);
     delete dir;
 }
 
@@ -547,50 +559,43 @@ FileSystem::Expand(FileHeader *hdr, unsigned size) {
     ASSERT(hdr != nullptr);
     ASSERT(size != 0);
 
-    // lockMapDir->Acquire();
+    lockFreeMap->Acquire();
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
     freeMap->FetchFrom(freeMapFile);
     bool tmp = hdr->Expand(freeMap, size);
     if(tmp) freeMap->WriteBack(freeMapFile);
-    // lockMapDir->Release();
-    return tmp;
-}
-
-bool
-FileSystem::isDeleted(int sector) {
-    // lockTablaAbiertos->Acquire();
-    int i;
-    for (i=0; !(tablaAbiertos[i]->sector == sector); i++);
-    bool tmp = tablaAbiertos[i]->deleted;
-    // lockTablaAbiertos->Release();
+    lockFreeMap->Release();
     return tmp;
 }
 
 void 
 FileSystem::closeFile(int sector) {
-    // lockTablaAbiertos->Acquire();
+    lockTablaAbiertos->Acquire();
     if(sector != 0 && sector != 1) {
         int i;
         for (i=0; i<idxTable && !(tablaAbiertos[i]->sector == sector); i++);
         tablaAbiertos[i]->usedBy--;
         if(tablaAbiertos[i]->deleted) {
             Remove(tablaAbiertos[i]->name);
+        }else if(strcmp(tablaAbiertos[i]->name, "directory") == 0 && tablaAbiertos[i]->usedBy == 0) {
+            // delete OpenFile (???)
         }
     }
-    DEBUG('f', "Passed for\n");
-    // lockTablaAbiertos->Release();
+    lockTablaAbiertos->Release();
 }
 
 int
 FileSystem::Cd(char* path) {
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
+    // OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
+    OpenFile *workingDir = Open("directory", DIRECTORY_SECTOR);
+    int previousSect = DIRECTORY_SECTOR;
     int sector = 1;
 
-    char* directories[MAX_FILE_AMMOUNT];
+    // char* directories[MAX_FILE_AMMOUNT];
     char buff[256]; // woo magic numbers
-    char largo = strlen(path);
-    int ammountDirectories = 1;
+    // char largo = strlen(path);
+    // int ammountDirectories = 1;
     strcpy(buff, path);
     char *dirName = strtok(buff, "/");
 
@@ -598,10 +603,14 @@ FileSystem::Cd(char* path) {
         dir->FetchFrom(workingDir);
         sector = dir->Find(dirName);
         if(sector!=-1) {
-            delete workingDir;
+            // delete workingDir;
+            closeFile(previousSect);
             dirName = strtok(NULL, "/"); //Chequear que pasa si la cosa se corta aca
-            if (dirName != NULL)
-                workingDir = new OpenFile(sector);
+            if (dirName != NULL) {
+                // workingDir = new OpenFile(sector);
+                workingDir = Open("directory", sector);
+                previousSect = sector;
+            }
         }
     }
     delete dir;
@@ -643,7 +652,10 @@ void
 FileSystem::Ls() {
     DEBUG('e', "Ls reached FileSystem\n");
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
+    // OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
+    int currDir = currentThread->GetCurrentDir();
+    OpenFile *workingDir = Open("directory", currDir);
+
     dir->FetchFrom(workingDir);
 
     DEBUG('e', "Ls passed GetCurrentDir\n");
@@ -651,13 +663,14 @@ FileSystem::Ls() {
     DEBUG('e', "Ls passed List\n");
 
     delete dir;
-    delete workingDir;
+    // delete workingDir;
+    closeFile(currDir);
 }
 
 bool
 FileSystem::Mkdir(char* name) {
     DEBUG('e', "Mkdir reached FileSystem\n");
-
+    lockFreeMap->Acquire();
     /* Buscamos si hay espacio para guardar el header */
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
     freeMap->FetchFrom(freeMapFile);
@@ -677,7 +690,9 @@ FileSystem::Mkdir(char* name) {
 
     /* Agregamos el directorio como sub directorio del actual */
     Directory *currentDir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile *currentDirFile = new OpenFile(currentThread->GetCurrentDir());
+    // OpenFile *currentDirFile = new OpenFile(currentThread->GetCurrentDir());
+    int currDir = currentThread->GetCurrentDir();
+    OpenFile *currentDirFile = Open("directory" ,currDir);
 
     currentDir->FetchFrom(currentDirFile);
     if(!currentDir->Add(name, hdrSector)) {
@@ -693,7 +708,10 @@ FileSystem::Mkdir(char* name) {
     delete freeMap;
     delete dirH;
     delete currentDir;
-    delete currentDirFile;
+    // delete currentDirFile;
+    closeFile(currDir);
+
+    lockFreeMap->Release();
     /* Me parece que esto no hace nada
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile *directoryFile = new OpenFile(hdrSector);

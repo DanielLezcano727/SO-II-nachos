@@ -164,19 +164,21 @@ public:
 
     bool Mkdir(char* name);
 
-    Lock* FindLock(int sector);
+    int FindLock(int sector);
 
 private:
-    OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
-                            ///< file.
+    OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a file.
+    Lock *lockFreeMap;
+
     // OpenFile *directoryFile;  ///< “Root” directory -- list of file names,
                                  ///< represented as a file.
+
     int idxTable;
     FileData *tablaAbiertos[MAX_FILE_AMMOUNT];
-    DirLocks *tablaLocks[MAX_FILE_AMMOUNT];
-
     Lock *lockTablaAbiertos;
-    Lock *lockFreeMap;
+
+    int idxLocks;
+    DirLocks *tablaLocks[MAX_FILE_AMMOUNT];
     Lock *lockTablaLocks;
 };
 

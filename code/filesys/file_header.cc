@@ -46,12 +46,12 @@ FileHeader::Expand(Bitmap* freeMap, unsigned numBytes) {
         int newNumBytes = numBytes - (SECTOR_SIZE * raw.numSectors - raw.numBytes); //Take into account left-over bytes in last sector
         unsigned int oldnumSectors = raw.numSectors;
         if(newNumBytes <= 0) {
-            DEBUG('f', "Another sector is not needed, adding %d bytes", numBytes);
+            // DEBUG('f', "Another sector is not needed, adding %d bytes", numBytes);
             raw.numBytes += numBytes; //Didn´t require new sector, use what we have
             return true;
         }
         if (freeMap->CountClear() < DivRoundUp((unsigned)newNumBytes, SECTOR_SIZE)) {
-            DEBUG('f', "Not enough space, denying expand request\n");
+            // DEBUG('f', "Not enough space, denying expand request\n");
             return false;  // Not enough space.
         }
 
@@ -91,7 +91,7 @@ FileHeader::Expand(Bitmap* freeMap, unsigned numBytes) {
 bool
 FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 {
-    DEBUG('f', "Requested allocate for file size: %d\n", fileSize);
+    // DEBUG('f', "Requested allocate for file size: %d\n", fileSize);
     ASSERT(freeMap != nullptr);
 
     // if (fileSize > DISK_SIZE) {
@@ -113,11 +113,11 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
 
     for (unsigned i = 0; i < raw.numSectors && i < NUM_DIRECT; i++) {
         raw.dataSectors[i] = freeMap->Find();
-        DEBUG('f', "Found free sector n° %d\n", i);
+        // DEBUG('f', "Found free sector n° %d\n", i);
     }
 
     if (fileSize > MAX_FILE_SIZE) {
-        DEBUG('f', "File too large, indirection needed\n");
+        // DEBUG('f', "File too large, indirection needed\n");
         raw.nextHeader = freeMap->Find();
         if (raw.nextHeader == -1)
             return false;
@@ -159,7 +159,7 @@ FileHeader::Deallocate(Bitmap *freeMap)
 void
 FileHeader::FetchFrom(unsigned sector)
 {
-    DEBUG('f', "Fetching header from disk sector %d\n", sector);
+    // DEBUG('f', "Fetching header from disk sector %d\n", sector);
     synchDisk->ReadSector(sector, (char *) &raw);
 }
 
@@ -185,7 +185,7 @@ FileHeader::ByteToSector(unsigned offset)
     // DEBUG('f', "ByteToSector with offset %d\n", offset);
     if (offset >= (NUM_DIRECT * SECTOR_SIZE)) {
         ASSERT(raw.nextHeader);
-        DEBUG('f', "Sector out of current header, delegating request\n");
+        // DEBUG('f', "Sector out of current header, delegating request\n");
         FileHeader* header = new FileHeader;
         header->FetchFrom(raw.nextHeader);
         unsigned tmp = header->ByteToSector(offset - (NUM_DIRECT * SECTOR_SIZE));

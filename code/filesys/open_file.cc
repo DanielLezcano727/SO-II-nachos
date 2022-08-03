@@ -157,7 +157,7 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     // if (position >= fileLength) return 0;  // Check request.
     // if (position + numBytes > fileLength) numBytes = fileLength - position;
     if (position + numBytes > fileLength) {
-        DEBUG('f', "Expand requested\n");
+        // DEBUG('f', "Expand requested\n");
         bool res = fileSystem->Expand(hdr, position + numBytes - fileLength);
         if (!res) return 0;
         hdr->WriteBack(hdrSector);

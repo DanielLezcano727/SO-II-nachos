@@ -116,9 +116,13 @@ typedef struct {
     const char* name;
     int sector;
     unsigned usedBy;
-    Lock *lock;
     bool deleted;
 } FileData;
+
+typedef struct {
+    int sector;
+    Lock *lock;
+} DirLocks;
 
 class FileSystem {
 public:
@@ -160,6 +164,8 @@ public:
 
     bool Mkdir(char* name);
 
+    Lock* FindLock(int sector);
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.
@@ -167,9 +173,11 @@ private:
                                  ///< represented as a file.
     int idxTable;
     FileData *tablaAbiertos[MAX_FILE_AMMOUNT];
+    DirLocks *tablaLocks[MAX_FILE_AMMOUNT];
 
     Lock *lockTablaAbiertos;
     Lock *lockFreeMap;
+    Lock *lockTablaLocks;
 };
 
 #endif

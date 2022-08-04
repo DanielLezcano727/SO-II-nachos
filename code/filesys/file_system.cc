@@ -185,8 +185,8 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
     DEBUG('f', "Create requested\n");
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
-    DEBUG('f', "Sector %d lockSector %d\n", sector, lockSector);
-    // tablaLocks[lockSector]->lock->Acquire();
+    // DEBUG('f', "Sector %d lockSector %d\n", sector, lockSector);
+    tablaLocks[lockSector]->lock->Acquire();
 
     DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
 
@@ -230,7 +230,7 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
     delete freeMap;
     delete dir;
     delete directoryFile;
-    // tablaLocks[lockSector]->lock->Release();
+    tablaLocks[lockSector]->lock->Release();
 
     DEBUG('f', "Create finished\n");
     return success;
@@ -249,7 +249,7 @@ FileSystem::Open(const char *name, int sector)
     DEBUG('f', "Open requested\n");
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
-    // tablaLocks[lockSector]->lock->Acquire();
+    tablaLocks[lockSector]->lock->Acquire();
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile  *openFile = nullptr;
@@ -284,7 +284,7 @@ FileSystem::Open(const char *name, int sector)
 
     delete dir;
     delete directoryFile;
-    // tablaLocks[lockSector]->lock->Release();
+    tablaLocks[lockSector]->lock->Release();
 
     DEBUG('f', "Open finished\n");
     return openFile;  // Return null if not found.
@@ -309,7 +309,7 @@ FileSystem::Remove(const char *name, int sector)
 
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
-    // tablaLocks[lockSector]->lock->Acquire();
+    tablaLocks[lockSector]->lock->Acquire();
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile *directoryFile = new OpenFile(sector);
@@ -317,6 +317,7 @@ FileSystem::Remove(const char *name, int sector)
     int fileSector = dir->Find(name);
     if (fileSector == -1) {
        delete dir;
+        tablaLocks[lockSector]->lock->Release();
        return false;  // file not found
     }
     FileHeader *fileH = new FileHeader;
@@ -348,7 +349,7 @@ FileSystem::Remove(const char *name, int sector)
     delete directoryFile;
     delete fileH;
     delete dir;
-    // tablaLocks[lockSector]->lock->Release();
+    tablaLocks[lockSector]->lock->Release();
     DEBUG('f', "Remove finished\n");
 
     return true;
@@ -692,7 +693,7 @@ bool
 FileSystem::Mkdir(char* name) {
     DEBUG('f', "Mkdir requested\n");
     int currDir = currentThread->GetCurrentDir();
-    // tablaLocks[FindLock(currDir)]->lock->Acquire();
+    tablaLocks[FindLock(currDir)]->lock->Acquire();
 
     /* Buscamos si hay espacio para guardar el header */
     lockFreeMap->Acquire();
@@ -700,6 +701,8 @@ FileSystem::Mkdir(char* name) {
     freeMap->FetchFrom(freeMapFile);
     int hdrSector = freeMap->Find();
     if (hdrSector == -1) {
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        lockFreeMap->Release();
         delete freeMap;
         return false;
     }
@@ -708,6 +711,8 @@ FileSystem::Mkdir(char* name) {
     /* Reservamos el espacio del nuevo directorio en disco */
     FileHeader *dirH = new FileHeader;
     if (!dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE)) {
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        lockFreeMap->Release();
         delete freeMap;
         delete dirH;
         return false;
@@ -730,6 +735,7 @@ FileSystem::Mkdir(char* name) {
         delete dirH;
         delete currentDir;
         delete currentDirFile;
+        tablaLocks[FindLock(currDir)]->lock->Release();
         return false;
     }
     DEBUG('f', "Added entry for new directory\n");
@@ -737,8 +743,8 @@ FileSystem::Mkdir(char* name) {
     // Make a lock for directory
     int i;
     lockTablaLocks->Acquire();
-    for(i = 0; i < idxLocks && i < MAX_FILE_AMMOUNT; i++);
-    if(i == MAX_FILE_AMMOUNT) {
+    if(idxLocks == MAX_FILE_AMMOUNT) {
+        DEBUG('f', "No more space in lockTable\n");
         lockFreeMap->Acquire();
         freeMap->FetchFrom(freeMapFile);
         freeMap->Clear(hdrSector);
@@ -748,12 +754,14 @@ FileSystem::Mkdir(char* name) {
         delete dirH;
         delete currentDir;
         delete currentDirFile;
+        lockTablaLocks->Release();
+        tablaLocks[FindLock(currDir)]->lock->Release();
         return false;
     }
     DirLocks* dirL = new DirLocks;
     dirL->sector = hdrSector;
     dirL->lock = new Lock("dirLock");
-    tablaLocks[i] = dirL;
+    tablaLocks[idxLocks] = dirL;
     idxLocks++;
     lockTablaLocks->Release();
 
@@ -765,7 +773,7 @@ FileSystem::Mkdir(char* name) {
     delete dirH;
     delete currentDir;
     delete currentDirFile;
-    // tablaLocks[FindLock(currDir)]->lock->Release();
+    tablaLocks[FindLock(currDir)]->lock->Release();
 
     DEBUG('f', "Mkdir finished\n");
     return true;
@@ -775,7 +783,10 @@ int
 FileSystem::FindLock(int sector) {
     int i;
     DEBUG('f', "Looking for lock of directory in sector %d\n", sector);
-    for(i = 0; tablaLocks[i]->sector != sector && i < idxLocks; i++);
-    if(i == MAX_FILE_AMMOUNT) i = -1;
+    for(i = 0; i < idxLocks && tablaLocks[i]->sector != sector; i++);
+    if(i == idxLocks) {
+        i = -1;
+        DEBUG('f', "Couldn't find lock for directory sector\n");
+    }
     return i;
 }

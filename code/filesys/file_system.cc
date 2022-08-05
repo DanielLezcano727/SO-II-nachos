@@ -72,7 +72,7 @@ FileSystem::FileSystem(bool format)
         FileHeader *mapH    = new FileHeader;
         FileHeader *dirH    = new FileHeader;
 
-        DEBUG('f', "Formatting the file system.\n");
+        // DEBUG('f', "Formatting the file system.\n");
 
         // First, allocate space for FileHeaders for the directory and bitmap
         // (make sure no one else grabs these!)
@@ -90,7 +90,7 @@ FileSystem::FileSystem(bool format)
         // the file header off of disk (and currently the disk has garbage on
         // it!).
 
-        DEBUG('f', "Writing headers back to disk.\n");
+        // DEBUG('f', "Writing headers back to disk.\n");
         mapH->WriteBack(FREE_MAP_SECTOR);
         dirH->WriteBack(DIRECTORY_SECTOR);
 
@@ -107,7 +107,7 @@ FileSystem::FileSystem(bool format)
         // sectors on the disk have been allocated for the file headers and
         // to hold the file data for the directory and bitmap.
 
-        DEBUG('f', "Writing bitmap and directory back to disk.\n");
+        // DEBUG('f', "Writing bitmap and directory back to disk.\n");
         freeMap->WriteBack(freeMapFile);     // flush changes to disk
         dir->WriteBack(directoryFile);
 
@@ -182,13 +182,13 @@ FileSystem::~FileSystem()
 bool
 FileSystem::Create(const char *name, unsigned initialSize, int sector)
 {
-    DEBUG('f', "Create requested\n");
+    DEBUG('f', "FileSystem::Create requested\n");
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
     // DEBUG('f', "Sector %d lockSector %d\n", sector, lockSector);
     tablaLocks[lockSector]->lock->Acquire();
 
-    DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
+    // DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
 
     Bitmap *freeMap = new Bitmap(NUM_SECTORS);
 
@@ -205,7 +205,7 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
         lockFreeMap->Acquire();
         freeMap->FetchFrom(freeMapFile);
         freeSector = freeMap->Find();
-        DEBUG('f', "Sector %d found\n", freeSector);
+        // DEBUG('f', "Sector %d found\n", freeSector);
 
           // Find a sector to hold the file header.
         if (freeSector == -1) {
@@ -232,7 +232,7 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
     delete directoryFile;
     tablaLocks[lockSector]->lock->Release();
 
-    DEBUG('f', "Create finished\n");
+    // DEBUG('f', "Create finished\n");
     return success;
 }
 
@@ -246,7 +246,8 @@ FileSystem::Create(const char *name, unsigned initialSize, int sector)
 OpenFile *
 FileSystem::Open(const char *name, int sector)
 {
-    DEBUG('f', "Open requested\n");
+    DEBUG('f', "FileSystem::Open requested\n");
+    // DEBUG('f', "Opening file %s from sector %d\n", name, sector);
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
     tablaLocks[lockSector]->lock->Acquire();
@@ -254,10 +255,10 @@ FileSystem::Open(const char *name, int sector)
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile  *openFile = nullptr;
 
-    DEBUG('f', "Opening file %s from sector %d\n", name, sector);
     OpenFile *directoryFile = new OpenFile(sector);
     dir->FetchFrom(directoryFile);
     int fileSector = dir->Find(name);
+    // DEBUG('f', "FileSystem::Open established current dir\n");
 
     if (fileSector >= 0) {
         int i;
@@ -281,12 +282,13 @@ FileSystem::Open(const char *name, int sector)
 
         lockTablaAbiertos->Release();
     }
+    // DEBUG('f', "FileSystem::Open created tablaAbiertos etry\n");
 
     delete dir;
     delete directoryFile;
     tablaLocks[lockSector]->lock->Release();
 
-    DEBUG('f', "Open finished\n");
+    // DEBUG('f', "Open finished\n");
     return openFile;  // Return null if not found.
 }
 
@@ -305,7 +307,7 @@ FileSystem::Open(const char *name, int sector)
 bool
 FileSystem::Remove(const char *name, int sector)
 {
-    DEBUG('f', "Remove requested\n");
+    DEBUG('f', "FileSystem::Remove requested\n");
 
     ASSERT(name != nullptr);
     int lockSector = FindLock(sector);
@@ -350,7 +352,7 @@ FileSystem::Remove(const char *name, int sector)
     delete fileH;
     delete dir;
     tablaLocks[lockSector]->lock->Release();
-    DEBUG('f', "Remove finished\n");
+    // DEBUG('f', "Remove finished\n");
 
     return true;
 }
@@ -359,7 +361,7 @@ FileSystem::Remove(const char *name, int sector)
 void
 FileSystem::List(int sector) // Se lo puede hacer completo usando la lista de locks para navegar el sector de cada directorio
 {
-    DEBUG('f', "List requested\n");
+    DEBUG('f', "FileSystem::List requested\n");
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile *directoryFile = new OpenFile(sector);
 
@@ -367,7 +369,7 @@ FileSystem::List(int sector) // Se lo puede hacer completo usando la lista de lo
     dir->List();
     delete directoryFile;
     delete dir;
-    DEBUG('f', "List finished\n");
+    // DEBUG('f', "List finished\n");
 }
 
 static bool
@@ -585,7 +587,7 @@ FileSystem::Print(int sector)
 
 bool 
 FileSystem::Expand(FileHeader *hdr, unsigned size) {
-    DEBUG('f', "Expand requested\n");
+    DEBUG('f', "FileSystem::Expand requested\n");
 
     ASSERT(hdr != nullptr);
     ASSERT(size != 0);
@@ -596,14 +598,14 @@ FileSystem::Expand(FileHeader *hdr, unsigned size) {
     bool tmp = hdr->Expand(freeMap, size);
     if(tmp) freeMap->WriteBack(freeMapFile);
     lockFreeMap->Release();
-    DEBUG('f', "Expand finished\n");
+    // DEBUG('f', "Expand finished\n");
 
     return tmp;
 }
 
 void 
 FileSystem::closeFile(int sector) {
-    DEBUG('f', "CloseFile requested\n");
+    DEBUG('f', "FileSystem::CloseFile requested\n");
 
     lockTablaAbiertos->Acquire();
     if(sector != 0 && sector != 1) {
@@ -614,12 +616,12 @@ FileSystem::closeFile(int sector) {
             Remove(tablaAbiertos[i]->name);
     }
     lockTablaAbiertos->Release();
-    DEBUG('f', "CloseFile finished\n");
+    // DEBUG('f', "CloseFile finished\n");
 }
 
 int
 FileSystem::Cd(char* path) {
-    DEBUG('f', "Cd requested\n");
+    DEBUG('f', "FileSystem::Cd requested\n");
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
@@ -670,14 +672,14 @@ FileSystem::Cd(char* path) {
     // }
     // delete dir;
     // delete workingDir;
-    DEBUG('f', "Cd finished\n");
+    // DEBUG('f', "Cd finished\n");
 
     return sector;
 }
 
 void
 FileSystem::Ls() {
-    DEBUG('f', "Ls requested\n");
+    DEBUG('f', "FileSystem::Ls requested\n");
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());;
 
@@ -686,12 +688,12 @@ FileSystem::Ls() {
 
     delete dir;
     delete workingDir;
-    DEBUG('f', "Ls finished\n");
+    // DEBUG('f', "Ls finished\n");
 }
 
 bool
 FileSystem::Mkdir(char* name) {
-    DEBUG('f', "Mkdir requested\n");
+    DEBUG('f', "FileSystem::Mkdir requested\n");
     int currDir = currentThread->GetCurrentDir();
     tablaLocks[FindLock(currDir)]->lock->Acquire();
 
@@ -706,7 +708,7 @@ FileSystem::Mkdir(char* name) {
         delete freeMap;
         return false;
     }
-    DEBUG('f', "Found free sector for directory header\n");
+    // DEBUG('f', "Found free sector for directory header\n");
 
     /* Reservamos el espacio del nuevo directorio en disco */
     FileHeader *dirH = new FileHeader;
@@ -719,7 +721,7 @@ FileSystem::Mkdir(char* name) {
     }
     freeMap->WriteBack(freeMapFile);
     lockFreeMap->Release();
-    DEBUG('f', "Created and stored directory header\n");
+    // DEBUG('f', "Created and stored directory header\n");
 
     /* Agregamos el directorio como sub directorio del actual */
     Directory *currentDir = new Directory(NUM_DIR_ENTRIES);
@@ -738,13 +740,13 @@ FileSystem::Mkdir(char* name) {
         tablaLocks[FindLock(currDir)]->lock->Release();
         return false;
     }
-    DEBUG('f', "Added entry for new directory\n");
+    // DEBUG('f', "Added entry for new directory\n");
 
     // Make a lock for directory
     int i;
     lockTablaLocks->Acquire();
     if(idxLocks == MAX_FILE_AMMOUNT) {
-        DEBUG('f', "No more space in lockTable\n");
+        // DEBUG('f', "No more space in lockTable\n");
         lockFreeMap->Acquire();
         freeMap->FetchFrom(freeMapFile);
         freeMap->Clear(hdrSector);
@@ -775,18 +777,18 @@ FileSystem::Mkdir(char* name) {
     delete currentDirFile;
     tablaLocks[FindLock(currDir)]->lock->Release();
 
-    DEBUG('f', "Mkdir finished\n");
+    // DEBUG('f', "Mkdir finished\n");
     return true;
 }
 
 int
 FileSystem::FindLock(int sector) {
     int i;
-    DEBUG('f', "Looking for lock of directory in sector %d\n", sector);
+    // DEBUG('f', "Looking for lock of directory in sector %d\n", sector);
     for(i = 0; i < idxLocks && tablaLocks[i]->sector != sector; i++);
     if(i == idxLocks) {
         i = -1;
-        DEBUG('f', "Couldn't find lock for directory sector\n");
+        // DEBUG('f', "Couldn't find lock for directory sector\n");
     }
     return i;
 }

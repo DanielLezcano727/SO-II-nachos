@@ -1,6 +1,5 @@
 #include "syscall.h"
 
-
 #define MAX_LINE_SIZE  60
 #define MAX_ARG_COUNT  32
 #define ARG_SEPARATOR  ' '
@@ -52,6 +51,7 @@ ReadLine(char *buffer, unsigned size, OpenFileId input)
             break;
         }
     }
+    
     return i;
 }
 

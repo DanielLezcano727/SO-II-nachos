@@ -125,8 +125,9 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 /// Nothing for now!
 AddressSpace::~AddressSpace()
 {
-    for (unsigned i = 0; i < numPages; i++)
+    for (unsigned i = 0; i < numPages; i++) {
         pages->Clear(pageTable[i].physicalPage);
+    }
     delete[] pageTable;
     #ifdef DEMAND_LOADING
         delete exe;

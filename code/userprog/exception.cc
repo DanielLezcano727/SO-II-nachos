@@ -239,6 +239,8 @@ SyscallHandler(ExceptionType _et)
             }
             
             machine->WriteRegister(2, i);
+            DEBUG('e', "`Read` Completed\n");
+
             break;
         }
 
@@ -295,6 +297,7 @@ SyscallHandler(ExceptionType _et)
         case SC_EXEC: {
             DEBUG('e', "`Exec` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
+            // DEBUG('e', "Executing file %s\n", filename);
             int argsAddr = machine->ReadRegister(5);
             int joinable = machine->ReadRegister(6);
 

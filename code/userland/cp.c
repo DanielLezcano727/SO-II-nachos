@@ -1,7 +1,10 @@
 #include "syscall.h"
 
-#define ARGC_ERROR    "Error: missing argument."
+#define ARGC_ERROR    "CP Error: missing argument."
+#define SRC_ERROR    "CP Error: couldn't open src."
+#define DEST_ERROR    "CP Error: couldn't create dest."
 #define MAX_LINE 256
+
 
 int
 main(int argc, char *argv[])
@@ -11,7 +14,7 @@ main(int argc, char *argv[])
     char line[MAX_LINE];
     int size = 0;
 
-    if (argc != 2) {
+    if (argc != 3) {
         Write(ARGC_ERROR, sizeof(ARGC_ERROR) - 1, CONSOLE_OUTPUT);
         Exit(1);
     }
@@ -30,7 +33,10 @@ main(int argc, char *argv[])
         Close(src);
         Close(dest);
     }else {
-        Write(ARGC_ERROR, sizeof(ARGC_ERROR) - 1, CONSOLE_OUTPUT);
+        if(src != -1)
+            Write(SRC_ERROR, sizeof(SRC_ERROR) - 1, CONSOLE_OUTPUT);
+        else
+            Write(DEST_ERROR, sizeof(DEST_ERROR) - 1, CONSOLE_OUTPUT);
         Exit(1);
     }
     return 0;

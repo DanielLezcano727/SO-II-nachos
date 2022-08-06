@@ -636,42 +636,12 @@ FileSystem::Cd(char* path) {
         sector = dir->Find(dirName);
         if(sector!=-1) {
             delete workingDir;
-            dirName = strtok(NULL, "/"); //Chequear que pasa si la cosa se corta aca
+            dirName = strtok(NULL, "/");
             if (dirName != NULL)
                 workingDir = new OpenFile(sector);
         }
     }
     delete dir;
-
-    /* La sgte version tiene algunos problemas */
-    // int existingDirs=0;
-    // /* Split path in directories */
-    // for(int j=1, k=0; j<strlen(path); j++, k++) {
-    //     if(path[j]!='/') {
-    //         buff[k]=path[j];
-    //     }else {
-    //         directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
-    //         strcpy(directories[existingDirs], buff);
-    //         existingDirs++;
-    //         k=0;
-    //     }
-    // }
-    // for (int i=0; i<existingDirs; i++)
-    //     DEBUG('f', "Directories: %s\n", directories[i]);
-
-    // directories[existingDirs] = new char[FILE_NAME_MAX_LEN];
-    // strcpy(directories[existingDirs], buff);
-
-    // for(int i=0; i<existingDirs && sector!=-1; i++) {
-    //     dir->FetchFrom(workingDir);
-    //     sector = dir->Find(directories[i]);
-    //     if(sector!=-1) {
-    //         delete workingDir;
-    //         workingDir = new OpenFile(sector);
-    //     }
-    // }
-    // delete dir;
-    // delete workingDir;
     // DEBUG('f', "Cd finished\n");
 
     return sector;
@@ -681,7 +651,8 @@ void
 FileSystem::Ls() {
     DEBUG('f', "FileSystem::Ls requested\n");
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
-    OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());;
+    // DEBUG('f', "Working Dir sector %d", currentThread->GetCurrentDir());
+    OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
 
     dir->FetchFrom(workingDir);
     dir->List();
@@ -743,7 +714,6 @@ FileSystem::Mkdir(char* name) {
     // DEBUG('f', "Added entry for new directory\n");
 
     // Make a lock for directory
-    int i;
     lockTablaLocks->Acquire();
     if(idxLocks == MAX_FILE_AMMOUNT) {
         // DEBUG('f', "No more space in lockTable\n");

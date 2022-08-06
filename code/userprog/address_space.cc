@@ -126,7 +126,8 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 AddressSpace::~AddressSpace()
 {
     for (unsigned i = 0; i < numPages; i++) {
-        pages->Clear(pageTable[i].physicalPage);
+        if (pageTable[i].valid)
+            pages->Clear(pageTable[i].physicalPage);
     }
     delete[] pageTable;
     #ifdef DEMAND_LOADING

@@ -110,7 +110,6 @@ void
 Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     ASSERT(func != nullptr);
-    this->parent = currentThread;
 
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);

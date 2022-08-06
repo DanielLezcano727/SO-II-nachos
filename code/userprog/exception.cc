@@ -289,6 +289,7 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, -1);
             }else {
                 DEBUG('e', "Started to join thread: %d\n", id);
+                threadTable->Get(id)->Join();
                 machine->WriteRegister(2, 0);
             }
             break;

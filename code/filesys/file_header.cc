@@ -94,10 +94,6 @@ FileHeader::Allocate(Bitmap *freeMap, unsigned fileSize)
     // DEBUG('f', "Requested allocate for file size: %d\n", fileSize);
     ASSERT(freeMap != nullptr);
 
-    // if (fileSize > DISK_SIZE) {
-    //     return false;
-    // }
-
     raw.parent = true;
     raw.nextHeader = -1;
     raw.numBytes = fileSize;

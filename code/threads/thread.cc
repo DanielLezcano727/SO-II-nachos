@@ -21,7 +21,6 @@
 #include "switch.h"
 #include "system.hh"
 #include "channel.hh"
-// #include "filesys/file_system.hh"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -80,9 +79,6 @@ Thread::~Thread()
                                        STACK_SIZE * sizeof *stack);
     }
 
-    // if (join) {
-    //     delete (Channel *)channelJoin;
-    // }
     #ifdef USER_PROGRAM
         delete space;
         delete fileTable;

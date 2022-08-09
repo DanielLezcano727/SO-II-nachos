@@ -627,7 +627,7 @@ FileSystem::Cd(char* path) {
     OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
     int sector = 1;
 
-    char buff[256]; // woo magic numbers
+    char buff[256];
     strcpy(buff, path);
     char *dirName = strtok(buff, "/");
 
@@ -744,7 +744,6 @@ FileSystem::Mkdir(char* name) {
     delete freeMap;
     delete dirH;
     delete currentDir;
-    delete currentDirFile;
     tablaLocks[FindLock(currDir)]->lock->Release();
 
     // DEBUG('f', "Mkdir finished\n");

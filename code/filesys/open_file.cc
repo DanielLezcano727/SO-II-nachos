@@ -33,8 +33,6 @@ OpenFile::OpenFile(int sector)
 /// Close a Nachos file, de-allocating any in-memory data structures.
 OpenFile::~OpenFile()
 {
-    // Chequear como borrar el openfile sin llamar al filesystem
-    // fileSystem->closeFile(hdrSector);
     delete hdr;
 }
 
@@ -154,8 +152,6 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     bool firstAligned, lastAligned;
     char *buf;
 
-    // if (position >= fileLength) return 0;  // Check request.
-    // if (position + numBytes > fileLength) numBytes = fileLength - position;
     if (position + numBytes > fileLength) {
         // DEBUG('f', "Expand requested\n");
         bool res = fileSystem->Expand(hdr, position + numBytes - fileLength);

@@ -93,7 +93,7 @@ StartProc(void *args)
 
     if (args != nullptr)
     {
-        unsigned argc = WriteArgs((char**)args); // Tira error acá al intentar escribir estos argumentos al hijo
+        unsigned argc = WriteArgs((char**)args);
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);

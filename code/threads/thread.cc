@@ -25,11 +25,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-
 /// This is put at the top of the execution stack, for detecting stack
 /// overflows.
 const unsigned STACK_FENCEPOST = 0xDEADBEEF;
-
 
 static inline bool
 IsThreadStatus(ThreadStatus s)
@@ -58,6 +56,9 @@ Thread::Thread(const char *threadName, bool callOnJoin)
     fileTable->Add(nullptr); // CONSOLE_INPUT
     fileTable->Add(nullptr); // CONSOLE_OUTPUT
 #endif
+#ifdef FILESYS
+    currentDirSector = DIRECTORY_SECTOR;
+#endif
 }
 
 /// De-allocate a thread.
@@ -78,9 +79,6 @@ Thread::~Thread()
                                        STACK_SIZE * sizeof *stack);
     }
 
-    // if (join) {
-    //     delete (Channel *)channelJoin;
-    // }
     #ifdef USER_PROGRAM
         delete space;
         delete fileTable;
@@ -108,7 +106,6 @@ void
 Thread::Fork(VoidFunctionPtr func, void *arg)
 {
     ASSERT(func != nullptr);
-    this->parent = currentThread;
 
     DEBUG('t', "Forking thread \"%s\" with func = %p, arg = %p\n",
           name, func, arg);
@@ -355,4 +352,18 @@ Thread::RestoreUserState()
     }
 }
 
+#endif
+
+#ifdef FILESYS
+void
+Thread::Cd(int sector) {
+    if(sector != -1) {
+        currentThread->currentDirSector = sector;
+    }
+}
+
+int
+Thread::GetCurrentDir() {
+    return currentThread->currentDirSector;
+}
 #endif

@@ -95,7 +95,6 @@ public:
 #include "directory_entry.hh"
 #include "machine/disk.hh"
 
-
 /// Initial file sizes for the bitmap and directory; until the file system
 /// supports extensible files, the directory size sets the maximum number of
 /// files that can be loaded onto the disk.
@@ -103,7 +102,27 @@ static const unsigned FREE_MAP_FILE_SIZE = NUM_SECTORS / BITS_IN_BYTE;
 static const unsigned NUM_DIR_ENTRIES = 10;
 static const unsigned DIRECTORY_FILE_SIZE
   = sizeof (DirectoryEntry) * NUM_DIR_ENTRIES;
+static const unsigned MAX_FILE_AMMOUNT = 100;
 
+class Lock; // Forward declaration of Locks
+
+/// Sectors containing the file headers for the bitmap of free sectors, and
+/// the directory of files.  These file headers are placed in well-known
+/// sectors, so that they can be located on boot-up.
+static const unsigned FREE_MAP_SECTOR = 0;
+static const unsigned DIRECTORY_SECTOR = 1;
+
+typedef struct {
+    const char* name;
+    int sector;
+    unsigned usedBy;
+    bool deleted;
+} FileData;
+
+typedef struct {
+    int sector;
+    Lock *lock;
+} DirLocks;
 
 class FileSystem {
 public:
@@ -118,28 +137,49 @@ public:
     ~FileSystem();
 
     /// Create a file (UNIX `creat`).
-    bool Create(const char *name, unsigned initialSize);
+    bool Create(const char *name, unsigned initialSize, int sector = DIRECTORY_SECTOR);
 
     /// Open a file (UNIX `open`).
-    OpenFile *Open(const char *name);
+    OpenFile *Open(const char *name, int sector = DIRECTORY_SECTOR);
 
     /// Delete a file (UNIX `unlink`).
-    bool Remove(const char *name);
+    bool Remove(const char *name, int sector = DIRECTORY_SECTOR);
 
     /// List all the files in the file system.
-    void List();
+    void List(int sector = DIRECTORY_SECTOR);
 
     /// Check the filesystem.
     bool Check();
 
     /// List all the files and their contents.
-    void Print();
+    void Print(int sector = DIRECTORY_SECTOR);
+
+    bool Expand(FileHeader* hdr, unsigned numBytes);
+
+    void closeFile(int sector);
+
+    int Cd(char* path);
+
+    void Ls();
+
+    bool Mkdir(char* name);
+
+    int FindLock(int sector);
 
 private:
-    OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
-                            ///< file.
-    OpenFile *directoryFile;  ///< “Root” directory -- list of file names,
-                              ///< represented as a file.
+    OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a file.
+    Lock *lockFreeMap;
+
+    // OpenFile *directoryFile;  ///< “Root” directory -- list of file names,
+                                 ///< represented as a file.
+
+    int idxTable;
+    FileData *tablaAbiertos[MAX_FILE_AMMOUNT];
+    Lock *lockTablaAbiertos;
+
+    int idxLocks;
+    DirLocks *tablaLocks[MAX_FILE_AMMOUNT];
+    Lock *lockTablaLocks;
 };
 
 #endif

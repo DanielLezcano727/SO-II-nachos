@@ -140,6 +140,30 @@ Close:
         syscall
         j       $31
         .end    Close
+Cd:
+        addiu   $2, $0, SC_CD
+        syscall
+        j       $31
+        .end    Cd
+
+        .globl  Cd
+        .ent    Cd
+Ls:
+        addiu   $2, $0, SC_LS
+        syscall
+        j       $31
+        .end    Ls
+
+        .globl  Ls
+        .ent    Ls
+Mkdir:
+        addiu   $2, $0, SC_MKDIR
+        syscall
+        j       $31
+        .end    Mkdir
+
+        .globl  Mkdir
+        .ent    Mkdir
 
 /// Dummy function to keep gcc happy.
         .globl  __main

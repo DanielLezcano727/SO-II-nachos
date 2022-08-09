@@ -93,7 +93,7 @@ StartProc(void *args)
 
     if (args != nullptr)
     {
-        unsigned argc = WriteArgs((char**)args); // Tira error acá al intentar escribir estos argumentos al hijo
+        unsigned argc = WriteArgs((char**)args);
         machine->WriteRegister(4, argc);
         int sp = machine->ReadRegister(STACK_REG);
         machine->WriteRegister(5, sp);
@@ -170,9 +170,7 @@ SyscallHandler(ExceptionType _et)
             }else {
                 DEBUG('e', "Abnormal exit\n");
             }
-
-            // EXIT pide pasar el estado segun syscall.h pero nuestra implementación de join no recibe dicho estado
-            // probablemente está mal pero no tenemos la corrección del mismo.
+            
             currentThread->Finish();
             break;
         }
@@ -241,6 +239,8 @@ SyscallHandler(ExceptionType _et)
             }
             
             machine->WriteRegister(2, i);
+            DEBUG('e', "`Read` Completed\n");
+
             break;
         }
 
@@ -289,27 +289,22 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, -1);
             }else {
                 DEBUG('e', "Started to join thread: %d\n", id);
-                // Creemos que nuestra implementacion de join está mal pero a día de esta entrega no tenemos 
-                // la devolución de la práctica 2 por lo que sólo dejamos planteada la idea.
-                // Thread *t = threadTable->Get(id);
-                // machine->WriteRegister(2, t->Join());
+                threadTable->Get(id)->Join();
                 machine->WriteRegister(2, 0);
             }
             break;
         }
 
         case SC_EXEC: {
-            // Estamos al tanto de un error en exec en el que programas de usuario que requieren argumentos
-            // no se ejecutan debido a un error de free():invalid pointer, no llegamos a ubicar el origen de
-            // dicho error.
             DEBUG('e', "`Exec` requested\n");
             char *filename = readFilename(machine->ReadRegister(4));
+            // DEBUG('e', "Executing file %s\n", filename);
             int argsAddr = machine->ReadRegister(5);
             int joinable = machine->ReadRegister(6);
 
             if(filename != nullptr) {
                 char** savedArgs = SaveArgs(argsAddr);
-                currentThread->SaveUserState(); // No sabemos si hay que guardar los registros de kernel tambien
+                currentThread->SaveUserState();
                 Thread* userThread = new Thread(filename, joinable);
                 
                 OpenFile *executable = fileSystem->Open(filename);
@@ -339,6 +334,35 @@ SyscallHandler(ExceptionType _et)
         case SC_SP: {
             DEBUG('e', "Stats print requested\n");
             stats->Print();
+            break;
+        }
+
+        case SC_CD: {
+            #ifdef FILESYS
+                DEBUG('e', "cd requested\n");
+                int pathDir = machine->ReadRegister(4);
+                char *path = readFilename(pathDir);
+                currentThread->Cd(fileSystem->Cd(path));
+            #endif
+            break;
+        }
+
+        case SC_LS: {
+            #ifdef FILESYS
+                DEBUG('e', "ls requested\n");
+                fileSystem->Ls();
+            #endif
+            break;
+        }
+
+        case SC_MKDIR: {
+            #ifdef FILESYS
+                DEBUG('e', "mkdir requested\n");
+                int nameAddr = machine->ReadRegister(4);
+                char *name = readFilename(nameAddr);
+                bool res = fileSystem->Mkdir(name);
+                DEBUG('e', "mkdir res: %d\n", res);
+            #endif
             break;
         }
 

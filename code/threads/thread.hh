@@ -133,6 +133,11 @@ public:
 
     void Join();
 
+#ifdef FILESYS
+    void Cd(int sector);
+    int GetCurrentDir();
+#endif
+
 private:
     // Some of the private data for this class is listed above.
 
@@ -147,10 +152,13 @@ private:
     const char *name;
     bool join;
     void *channelJoin;    
-    Thread *parent;
 
     /// Allocate a stack for thread.  Used internally by `Fork`.
     void StackAllocate(VoidFunctionPtr func, void *arg);
+
+#ifdef FILESYS
+    int currentDirSector;
+#endif
 
 #ifdef USER_PROGRAM
     /// User-level CPU register state.

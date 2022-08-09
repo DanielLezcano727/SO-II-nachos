@@ -33,6 +33,9 @@
 #define SC_WRITE   15
 #define SC_PS      16
 #define SC_SP      17
+#define SC_CD      18
+#define SC_LS      19
+#define SC_MKDIR   20
 
 
 #ifndef IN_ASM
@@ -126,6 +129,11 @@ int Read(char *buffer, int size, OpenFileId id);
 /// Close the file, we are done reading and writing to it.
 int Close(OpenFileId id);
 
+int Ls();
+
+int Cd(char *path);
+
+int Mkdir(char *name);
 
 #endif
 

@@ -27,6 +27,7 @@ OpenFile::OpenFile(int sector)
     hdr = new FileHeader;
     hdr->FetchFrom(sector);
     seekPosition = 0;
+    hdrSector = sector;
 }
 
 /// Close a Nachos file, de-allocating any in-memory data structures.
@@ -73,8 +74,8 @@ OpenFile::Write(const char *into, unsigned numBytes)
 {
     ASSERT(into != nullptr);
     ASSERT(numBytes > 0);
-
-    int result = WriteAt(into, numBytes, seekPosition);
+    int result = false;
+    result = WriteAt(into, numBytes, seekPosition);
     seekPosition += result;
     return result;
 }
@@ -120,8 +121,8 @@ OpenFile::ReadAt(char *into, unsigned numBytes, unsigned position)
     if (position + numBytes > fileLength) {
         numBytes = fileLength - position;
     }
-    DEBUG('f', "Reading %u bytes at %u, from file of length %u.\n",
-          numBytes, position, fileLength);
+    // DEBUG('f', "Reading %u bytes at %u, from file of length %u.\n",
+    //       numBytes, position, fileLength);
 
     firstSector = DivRoundDown(position, SECTOR_SIZE);
     lastSector = DivRoundDown(position + numBytes - 1, SECTOR_SIZE);
@@ -151,15 +152,13 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     bool firstAligned, lastAligned;
     char *buf;
 
-    if (position >= fileLength) {
-        return 0;  // Check request.
-    }
     if (position + numBytes > fileLength) {
-        numBytes = fileLength - position;
+        // DEBUG('f', "Expand requested\n");
+        bool res = fileSystem->Expand(hdr, position + numBytes - fileLength);
+        if (!res) return 0;
+        hdr->WriteBack(hdrSector);
+        fileLength = hdr->FileLength();
     }
-    DEBUG('f', "Writing %u bytes at %u, from file of length %u.\n",
-          numBytes, position, fileLength);
-
     firstSector = DivRoundDown(position, SECTOR_SIZE);
     lastSector  = DivRoundDown(position + numBytes - 1, SECTOR_SIZE);
     numSectors  = 1 + lastSector - firstSector;

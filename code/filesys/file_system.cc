@@ -46,16 +46,11 @@
 #include "directory.hh"
 #include "file_header.hh"
 #include "lib/bitmap.hh"
+#include "threads/system.hh"
+#include "threads/lock.hh"
 
 #include <stdio.h>
 #include <string.h>
-
-
-/// Sectors containing the file headers for the bitmap of free sectors, and
-/// the directory of files.  These file headers are placed in well-known
-/// sectors, so that they can be located on boot-up.
-static const unsigned FREE_MAP_SECTOR = 0;
-static const unsigned DIRECTORY_SECTOR = 1;
 
 /// Initialize the file system.  If `format == true`, the disk has nothing on
 /// it, and we need to initialize the disk to contain an empty directory, and
@@ -69,13 +64,15 @@ static const unsigned DIRECTORY_SECTOR = 1;
 FileSystem::FileSystem(bool format)
 {
     DEBUG('f', "Initializing the file system.\n");
+    idxTable = 0;
+    idxLocks = 0;
     if (format) {
         Bitmap     *freeMap = new Bitmap(NUM_SECTORS);
         Directory  *dir     = new Directory(NUM_DIR_ENTRIES);
         FileHeader *mapH    = new FileHeader;
         FileHeader *dirH    = new FileHeader;
 
-        DEBUG('f', "Formatting the file system.\n");
+        // DEBUG('f', "Formatting the file system.\n");
 
         // First, allocate space for FileHeaders for the directory and bitmap
         // (make sure no one else grabs these!)
@@ -93,7 +90,7 @@ FileSystem::FileSystem(bool format)
         // the file header off of disk (and currently the disk has garbage on
         // it!).
 
-        DEBUG('f', "Writing headers back to disk.\n");
+        // DEBUG('f', "Writing headers back to disk.\n");
         mapH->WriteBack(FREE_MAP_SECTOR);
         dirH->WriteBack(DIRECTORY_SECTOR);
 
@@ -102,7 +99,7 @@ FileSystem::FileSystem(bool format)
         // while Nachos is running.
 
         freeMapFile   = new OpenFile(FREE_MAP_SECTOR);
-        directoryFile = new OpenFile(DIRECTORY_SECTOR);
+        OpenFile *directoryFile = new OpenFile(DIRECTORY_SECTOR);
 
         // Once we have the files “open”, we can write the initial version of
         // each file back to disk.  The directory at this point is completely
@@ -110,7 +107,7 @@ FileSystem::FileSystem(bool format)
         // sectors on the disk have been allocated for the file headers and
         // to hold the file data for the directory and bitmap.
 
-        DEBUG('f', "Writing bitmap and directory back to disk.\n");
+        // DEBUG('f', "Writing bitmap and directory back to disk.\n");
         freeMap->WriteBack(freeMapFile);     // flush changes to disk
         dir->WriteBack(directoryFile);
 
@@ -128,14 +125,33 @@ FileSystem::FileSystem(bool format)
         // representing the bitmap and directory; these are left open while
         // Nachos is running.
         freeMapFile   = new OpenFile(FREE_MAP_SECTOR);
-        directoryFile = new OpenFile(DIRECTORY_SECTOR);
+        // directoryFile = new OpenFile(DIRECTORY_SECTOR);
     }
+
+    DirLocks* root = new DirLocks;
+    root->lock = new Lock("Root lock"); 
+    root->sector = DIRECTORY_SECTOR;
+    tablaLocks[0] = root;
+    idxLocks++;
+    
+    lockFreeMap = new Lock("Lock freeMap and Directory");
+    lockTablaAbiertos = new Lock("Lock tabla abiertos");
+    lockTablaLocks = new Lock("Lock tabla locks");
 }
 
 FileSystem::~FileSystem()
 {
     delete freeMapFile;
-    delete directoryFile;
+    // delete directoryFile;
+    delete lockTablaAbiertos;
+    delete lockFreeMap;
+    delete lockTablaLocks;
+    for(int i=0; i<idxTable; i++) {
+        delete tablaAbiertos[i];
+    }
+    for(int i=0; i<idxLocks; i++) {
+        delete tablaLocks[i];
+    }
 }
 
 /// Create a file in the Nachos file system (similar to UNIX `create`).
@@ -164,44 +180,59 @@ FileSystem::~FileSystem()
 /// * `name` is the name of file to be created.
 /// * `initialSize` is the size of file to be created.
 bool
-FileSystem::Create(const char *name, unsigned initialSize)
+FileSystem::Create(const char *name, unsigned initialSize, int sector)
 {
+    DEBUG('f', "FileSystem::Create requested\n");
     ASSERT(name != nullptr);
-    ASSERT(initialSize < MAX_FILE_SIZE);
+    int lockSector = FindLock(sector);
+    // DEBUG('f', "Sector %d lockSector %d\n", sector, lockSector);
+    tablaLocks[lockSector]->lock->Acquire();
 
-    DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
+    // DEBUG('f', "Creating file %s, size %u\n", name, initialSize);
+
+    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *directoryFile = new OpenFile(sector);
     dir->FetchFrom(directoryFile);
 
-    bool success;
+    bool success = false;
+    int freeSector;
 
     if (dir->Find(name) != -1) {
         success = false;  // File is already in directory.
     } else {
-        Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+        lockFreeMap->Acquire();
         freeMap->FetchFrom(freeMapFile);
-        int sector = freeMap->Find();
+        freeSector = freeMap->Find();
+        // DEBUG('f', "Sector %d found\n", freeSector);
+
           // Find a sector to hold the file header.
-        if (sector == -1) {
+        if (freeSector == -1) {
             success = false;  // No free block for file header.
-        } else if (!dir->Add(name, sector)) {
+        } else if (!dir->Add(name, freeSector)) {
             success = false;  // No space in directory.
         } else {
-            FileHeader *h = new FileHeader;
-            success = h->Allocate(freeMap, initialSize);
-              // Fails if no space on disk for data.
+            FileHeader *h = new FileHeader; 
+            success = h->Allocate(freeMap, initialSize); // Fails if no space on disk for data.
+            // DEBUG('f', "Allocate result: %d\n", success);
             if (success) {
                 // Everything worked, flush all changes back to disk.
-                h->WriteBack(sector);
+                h->WriteBack(freeSector);
                 dir->WriteBack(directoryFile);
                 freeMap->WriteBack(freeMapFile);
             }
             delete h;
         }
-        delete freeMap;
+        lockFreeMap->Release();
     }
+
+    delete freeMap;
     delete dir;
+    delete directoryFile;
+    tablaLocks[lockSector]->lock->Release();
+
+    // DEBUG('f', "Create finished\n");
     return success;
 }
 
@@ -213,20 +244,51 @@ FileSystem::Create(const char *name, unsigned initialSize)
 ///
 /// * `name` is the text name of the file to be opened.
 OpenFile *
-FileSystem::Open(const char *name)
+FileSystem::Open(const char *name, int sector)
 {
+    DEBUG('f', "FileSystem::Open requested\n");
+    // DEBUG('f', "Opening file %s from sector %d\n", name, sector);
     ASSERT(name != nullptr);
+    int lockSector = FindLock(sector);
+    tablaLocks[lockSector]->lock->Acquire();
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
     OpenFile  *openFile = nullptr;
 
-    DEBUG('f', "Opening file %s\n", name);
+    OpenFile *directoryFile = new OpenFile(sector);
     dir->FetchFrom(directoryFile);
-    int sector = dir->Find(name);
-    if (sector >= 0) {
-        openFile = new OpenFile(sector);  // `name` was found in directory.
+    int fileSector = dir->Find(name);
+    // DEBUG('f', "FileSystem::Open established current dir\n");
+
+    if (fileSector >= 0) {
+        int i;
+        lockTablaAbiertos->Acquire();
+
+        for(i=0; i < idxTable && tablaAbiertos[i]->sector != fileSector; i++);
+        if (i < idxTable) {
+            if (!tablaAbiertos[i]->deleted)
+                tablaAbiertos[i]->usedBy++;
+        } else {
+            FileData *fd = new FileData;
+            fd->usedBy = 1;
+            fd->sector = fileSector;
+            fd->name = name;
+            fd->deleted = false;
+            tablaAbiertos[idxTable] = fd;
+            idxTable++;
+        }
+        if (!tablaAbiertos[i]->deleted)
+            openFile = new OpenFile(fileSector);  // `name` was found in directory.
+
+        lockTablaAbiertos->Release();
     }
+    // DEBUG('f', "FileSystem::Open created tablaAbiertos etry\n");
+
     delete dir;
+    delete directoryFile;
+    tablaLocks[lockSector]->lock->Release();
+
+    // DEBUG('f', "Open finished\n");
     return openFile;  // Return null if not found.
 }
 
@@ -243,44 +305,71 @@ FileSystem::Open(const char *name)
 ///
 /// * `name` is the text name of the file to be removed.
 bool
-FileSystem::Remove(const char *name)
+FileSystem::Remove(const char *name, int sector)
 {
+    DEBUG('f', "FileSystem::Remove requested\n");
+
     ASSERT(name != nullptr);
+    int lockSector = FindLock(sector);
+    tablaLocks[lockSector]->lock->Acquire();
 
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *directoryFile = new OpenFile(sector);
     dir->FetchFrom(directoryFile);
-    int sector = dir->Find(name);
-    if (sector == -1) {
+    int fileSector = dir->Find(name);
+    if (fileSector == -1) {
        delete dir;
+        tablaLocks[lockSector]->lock->Release();
        return false;  // file not found
     }
     FileHeader *fileH = new FileHeader;
-    fileH->FetchFrom(sector);
+    fileH->FetchFrom(fileSector);
 
-    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
-    freeMap->FetchFrom(freeMapFile);
+    int i;
+    lockTablaAbiertos->Acquire();
+    for (i=0; i<idxTable && tablaAbiertos[i]->sector == fileSector; i++);
+    tablaAbiertos[i]->deleted = true;
 
-    fileH->Deallocate(freeMap);  // Remove data blocks.
-    freeMap->Clear(sector);      // Remove header block.
+    if (tablaAbiertos[i]->usedBy == 0) { // Habria que borrar la entrada de la tabla de abiertos? (y modificar la busqueda de entradas libres)
+        lockFreeMap->Acquire();
+        Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+        freeMap->FetchFrom(freeMapFile);
+
+        fileH->Deallocate(freeMap);  // Remove data blocks.
+        freeMap->Clear(fileSector);      // Remove header block.
+
+        freeMap->WriteBack(freeMapFile);  // Flush to disk.
+
+        lockFreeMap->Release();
+        delete freeMap;
+    }
+    lockTablaAbiertos->Release();
+
     dir->Remove(name);
-
-    freeMap->WriteBack(freeMapFile);  // Flush to disk.
     dir->WriteBack(directoryFile);    // Flush to disk.
+
+    delete directoryFile;
     delete fileH;
     delete dir;
-    delete freeMap;
+    tablaLocks[lockSector]->lock->Release();
+    // DEBUG('f', "Remove finished\n");
+
     return true;
 }
 
 /// List all the files in the file system directory.
 void
-FileSystem::List()
+FileSystem::List(int sector) // Se lo puede hacer completo usando la lista de locks para navegar el sector de cada directorio
 {
+    DEBUG('f', "FileSystem::List requested\n");
     Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *directoryFile = new OpenFile(sector);
 
     dir->FetchFrom(directoryFile);
     dir->List();
+    delete directoryFile;
     delete dir;
+    // DEBUG('f', "List finished\n");
 }
 
 static bool
@@ -409,7 +498,7 @@ FileSystem::Check()
 {
     DEBUG('f', "Performing filesystem check\n");
     bool error = false;
-
+    OpenFile *directoryFile = new OpenFile(DIRECTORY_SECTOR);
     Bitmap *shadowMap = new Bitmap(NUM_SECTORS);
     shadowMap->Mark(FREE_MAP_SECTOR);
     shadowMap->Mark(DIRECTORY_SECTOR);
@@ -465,12 +554,13 @@ FileSystem::Check()
 ///   * the contents of the file header;
 ///   * the data in the file.
 void
-FileSystem::Print()
+FileSystem::Print(int sector)
 {
     FileHeader *bitH    = new FileHeader;
     FileHeader *dirH    = new FileHeader;
     Bitmap     *freeMap = new Bitmap(NUM_SECTORS);
     Directory  *dir     = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *directoryFile = new OpenFile(sector);
 
     printf("--------------------------------\n");
     bitH->FetchFrom(FREE_MAP_SECTOR);
@@ -493,4 +583,181 @@ FileSystem::Print()
     delete dirH;
     delete freeMap;
     delete dir;
+}
+
+bool 
+FileSystem::Expand(FileHeader *hdr, unsigned size) {
+    DEBUG('f', "FileSystem::Expand requested\n");
+
+    ASSERT(hdr != nullptr);
+    ASSERT(size != 0);
+
+    lockFreeMap->Acquire();
+    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+    freeMap->FetchFrom(freeMapFile);
+    bool tmp = hdr->Expand(freeMap, size);
+    if(tmp) freeMap->WriteBack(freeMapFile);
+    lockFreeMap->Release();
+    // DEBUG('f', "Expand finished\n");
+
+    return tmp;
+}
+
+void 
+FileSystem::closeFile(int sector) {
+    DEBUG('f', "FileSystem::CloseFile requested\n");
+
+    lockTablaAbiertos->Acquire();
+    if(sector != 0 && sector != 1) {
+        int i;
+        for (i=0; i<idxTable && !(tablaAbiertos[i]->sector == sector); i++);
+        tablaAbiertos[i]->usedBy--;
+        if(tablaAbiertos[i]->deleted)
+            Remove(tablaAbiertos[i]->name);
+    }
+    lockTablaAbiertos->Release();
+    // DEBUG('f', "CloseFile finished\n");
+}
+
+int
+FileSystem::Cd(char* path) {
+    DEBUG('f', "FileSystem::Cd requested\n");
+
+    Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile* workingDir = new OpenFile(DIRECTORY_SECTOR);
+    int sector = 1;
+
+    char buff[256];
+    strcpy(buff, path);
+    char *dirName = strtok(buff, "/");
+
+    for(int i=0; dirName != NULL && sector != -1; i++) {
+        dir->FetchFrom(workingDir);
+        sector = dir->Find(dirName);
+        if(sector!=-1) {
+            delete workingDir;
+            dirName = strtok(NULL, "/");
+            if (dirName != NULL)
+                workingDir = new OpenFile(sector);
+        }
+    }
+    delete dir;
+    // DEBUG('f', "Cd finished\n");
+
+    return sector;
+}
+
+void
+FileSystem::Ls() {
+    DEBUG('f', "FileSystem::Ls requested\n");
+    Directory *dir = new Directory(NUM_DIR_ENTRIES);
+    // DEBUG('f', "Working Dir sector %d", currentThread->GetCurrentDir());
+    OpenFile* workingDir = new OpenFile(currentThread->GetCurrentDir());
+
+    dir->FetchFrom(workingDir);
+    dir->List();
+
+    delete dir;
+    delete workingDir;
+    // DEBUG('f', "Ls finished\n");
+}
+
+bool
+FileSystem::Mkdir(char* name) {
+    DEBUG('f', "FileSystem::Mkdir requested\n");
+    int currDir = currentThread->GetCurrentDir();
+    tablaLocks[FindLock(currDir)]->lock->Acquire();
+
+    /* Buscamos si hay espacio para guardar el header */
+    lockFreeMap->Acquire();
+    Bitmap *freeMap = new Bitmap(NUM_SECTORS);
+    freeMap->FetchFrom(freeMapFile);
+    int hdrSector = freeMap->Find();
+    if (hdrSector == -1) {
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        lockFreeMap->Release();
+        delete freeMap;
+        return false;
+    }
+    // DEBUG('f', "Found free sector for directory header\n");
+
+    /* Reservamos el espacio del nuevo directorio en disco */
+    FileHeader *dirH = new FileHeader;
+    if (!dirH->Allocate(freeMap, DIRECTORY_FILE_SIZE)) {
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        lockFreeMap->Release();
+        delete freeMap;
+        delete dirH;
+        return false;
+    }
+    freeMap->WriteBack(freeMapFile);
+    lockFreeMap->Release();
+    // DEBUG('f', "Created and stored directory header\n");
+
+    /* Agregamos el directorio como sub directorio del actual */
+    Directory *currentDir = new Directory(NUM_DIR_ENTRIES);
+    OpenFile *currentDirFile = new OpenFile(currDir);
+    currentDir->FetchFrom(currentDirFile);
+    if(!currentDir->Add(name, hdrSector)) {
+        lockFreeMap->Acquire();
+        freeMap->FetchFrom(freeMapFile);
+        freeMap->Clear(hdrSector);
+        freeMap->WriteBack(freeMapFile);
+        lockFreeMap->Release();
+        delete freeMap;
+        delete dirH;
+        delete currentDir;
+        delete currentDirFile;
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        return false;
+    }
+    // DEBUG('f', "Added entry for new directory\n");
+
+    // Make a lock for directory
+    lockTablaLocks->Acquire();
+    if(idxLocks == MAX_FILE_AMMOUNT) {
+        // DEBUG('f', "No more space in lockTable\n");
+        lockFreeMap->Acquire();
+        freeMap->FetchFrom(freeMapFile);
+        freeMap->Clear(hdrSector);
+        freeMap->WriteBack(freeMapFile);
+        lockFreeMap->Release();
+        delete freeMap;
+        delete dirH;
+        delete currentDir;
+        delete currentDirFile;
+        lockTablaLocks->Release();
+        tablaLocks[FindLock(currDir)]->lock->Release();
+        return false;
+    }
+    DirLocks* dirL = new DirLocks;
+    dirL->sector = hdrSector;
+    dirL->lock = new Lock("dirLock");
+    tablaLocks[idxLocks] = dirL;
+    idxLocks++;
+    lockTablaLocks->Release();
+
+    /* Guardamos los cambios en el disco */
+    currentDir->WriteBack(currentDirFile);
+    dirH->WriteBack(hdrSector);
+
+    delete freeMap;
+    delete dirH;
+    delete currentDir;
+    tablaLocks[FindLock(currDir)]->lock->Release();
+
+    // DEBUG('f', "Mkdir finished\n");
+    return true;
+}
+
+int
+FileSystem::FindLock(int sector) {
+    int i;
+    // DEBUG('f', "Looking for lock of directory in sector %d\n", sector);
+    for(i = 0; i < idxLocks && tablaLocks[i]->sector != sector; i++);
+    if(i == idxLocks) {
+        i = -1;
+        // DEBUG('f', "Couldn't find lock for directory sector\n");
+    }
+    return i;
 }

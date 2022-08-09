@@ -1,6 +1,5 @@
 #include "syscall.h"
 
-
 #define MAX_LINE_SIZE  60
 #define MAX_ARG_COUNT  32
 #define ARG_SEPARATOR  ' '
@@ -43,7 +42,7 @@ ReadLine(char *buffer, unsigned size, OpenFileId input)
     // TODO: how to make sure that `buffer` is not `NULL`?
 
     unsigned i;
-
+    
     for (i = 0; i < size; i++) {
         Read(&buffer[i], 1, input);
         // TODO: what happens when the input ends?
@@ -52,6 +51,7 @@ ReadLine(char *buffer, unsigned size, OpenFileId input)
             break;
         }
     }
+    
     return i;
 }
 
@@ -108,6 +108,7 @@ main(void)
     for (;;) {
         WritePrompt(OUTPUT);
         const unsigned lineSize = ReadLine(line, MAX_LINE_SIZE, INPUT);
+
         if (lineSize == 0) {
             continue;
         }
@@ -124,7 +125,8 @@ main(void)
             SpaceId newProc = Exec(argv[0], argv, 0);
         } else {
             SpaceId newProc = Exec(argv[0], argv, 1);
-            Join(newProc);
+            if(newProc != -1)
+                Join(newProc);
         }
         //const SpaceId newProc = Exec(line, argv);
 

@@ -11,7 +11,7 @@ main(int argc, char *argv[])
         Exit(1);
     }
 
-    Create(argv[1]);
+    Mkdir(argv[1]);
 
     return 0;
 }
